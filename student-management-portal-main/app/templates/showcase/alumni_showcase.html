@@ -1,0 +1,111 @@
+{% extends "layout.html" %}
+{% block title %}Alumni Showcase{% endblock %}
+{% block page_title %}Alumni Showcase{% endblock %}
+
+{% block head_extra %}
+<style>
+    /* Add any specific styles if needed, Tailwind should handle most */
+    .alumni-card {
+        transition: transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
+    }
+    .alumni-card:hover {
+        transform: translateY(-4px);
+        box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05); /* shadow-lg */
+    }
+    /* Placeholder image style */
+    .alumni-placeholder-img {
+        background-color: #e5e7eb; /* gray-200 */
+        /* Optional gradient */
+        background-image: linear-gradient(to bottom right, #e5e7eb, #d1d5db);
+        color: #9ca3af; /* gray-400 */
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 2rem; /* text-3xl */
+        font-weight: 600; /* font-semibold */
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div id="alumni-showcase-wrapper">
+
+    {# Page Header #}
+    <div class="mb-8 text-center">
+        <h2 class="text-3xl font-bold text-gray-800">Meet Our Alumni</h2>
+        <p class="mt-2 text-md text-gray-600">See where our graduates are making an impact.</p>
+    </div>
+
+    {# Display Errors if any #}
+    {% if error_message %}
+        <div class="p-4 mb-6 text-sm text-red-700 bg-red-100 rounded-lg border border-red-300 text-center" role="alert">
+            {{ error_message }}
+        </div>
+    {% endif %}
+
+    {# Alumni Grid #}
+    {% if alumni_list %}
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 md:gap-8">
+            {% for alumni in alumni_list %}
+                <div class="alumni-card bg-white rounded-lg shadow border border-gray-200 overflow-hidden flex flex-col">
+                    {# Placeholder Image Area #}
+                    <div class="h-40 w-full alumni-placeholder-img">
+                        {# Placeholder Initials or Icon #}
+                        {% set initials = alumni.student.name.split() | map('first') | join('') if alumni.student else '?' %}
+                        <span>{{ initials[:2] | upper }}</span>
+                        {# Or use an SVG placeholder icon #}
+                        {# <svg class="w-16 h-16 text-gray-400" ...>...</svg> #}
+                    </div>
+
+                    {# Text Content #}
+                    <div class="p-5 flex flex-col flex-grow"> {# Use flex-grow to push contact info down #}
+                        <h3 class="text-lg font-semibold text-gray-900 mb-1">{{ alumni.student.name if alumni.student else 'Alumnus/Alumna' }}</h3>
+                        {% if alumni.graduation_year %}
+                        <p class="text-sm text-gray-500 mb-3">Class of {{ alumni.graduation_year }}</p>
+                        {% endif %}
+
+                        {% if alumni.current_job or alumni.current_employer %}
+                        <div class="mt-1 mb-3">
+                             {% if alumni.current_job %}
+                            <p class="text-sm font-medium text-blue-700">{{ alumni.current_job }}</p>
+                             {% endif %}
+                             {% if alumni.current_employer %}
+                            <p class="text-sm text-gray-600">{{ alumni.current_employer }}</p>
+                             {% endif %}
+                        </div>
+                        {% endif %}
+
+                        {# Contact Info (Optional & Pushed Down) #}
+                        {% if alumni.contact_info %}
+                        <div class="mt-auto pt-3 border-t border-gray-100"> {# mt-auto pushes this down #}
+                            {# Try to detect if it's a likely URL for linking #}
+                            {% if alumni.contact_info.startswith('http') or alumni.contact_info.startswith('www.') or '@' in alumni.contact_info %}
+                                {% set contact_url = alumni.contact_info if alumni.contact_info.startswith('http') else ('mailto:' + alumni.contact_info if '@' in alumni.contact_info else 'http://' + alumni.contact_info) %}
+                                {% set contact_display = 'LinkedIn Profile' if 'linkedin.com' in alumni.contact_info else ('Email' if '@' in alumni.contact_info else 'Website/Contact') %}
+                                <a href="{{ contact_url }}" target="_blank" rel="noopener noreferrer" class="text-xs text-blue-600 hover:text-blue-800 hover:underline break-all">
+                                    {{ contact_display }}
+                                </a>
+                            {% else %}
+                                <p class="text-xs text-gray-500 break-all">{{ alumni.contact_info }}</p>
+                            {% endif %}
+                        </div>
+                        {% endif %}
+                    </div>
+                </div>
+            {% endfor %}
+        </div>
+    {% elif not error_message %}
+        {# Message if list is empty but no error occurred #}
+        <div class="text-center py-10 px-4 bg-white rounded-lg shadow border border-gray-200">
+            <svg class="mx-auto h-12 w-12 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm-9 5a3 3 0 116 0 3 3 0 01-6 0z"></path></svg>
+            <h3 class="mt-2 text-sm font-medium text-gray-900">No Alumni Records</h3>
+            <p class="mt-1 text-sm text-gray-500">Alumni information has not been added yet.</p>
+        </div>
+    {% endif %} {# End alumni_list check #}
+
+</div>{# End Wrapper #}
+{% endblock %}
+
+{% block scripts_extra %}
+{# No JavaScript needed for this read-only view #}
+{% endblock %}

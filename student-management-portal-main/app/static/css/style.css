@@ -1,0 +1,20 @@
+/* app/static/css/style.css */
+
+/*
+  This file is referenced by the HTML templates.
+  However, styling is primarily handled by Tailwind CSS utility classes
+  applied directly in the HTML markup, loaded via the CDN script in the <head>.
+  You can add minimal base styles or custom component styles here if needed,
+  but aim to use Tailwind utilities as much as possible.
+*/
+
+/* Example of a potential base style (optional): */
+/* body {
+    @apply font-sans bg-gray-100 text-gray-800;
+} */
+/* Note: Using @apply requires a build step, so stick to utility classes in HTML when using CDN */
+
+body {
+    /* Add fallback font if Tailwind doesn't load? */
+    font-family: sans-serif;
+   }

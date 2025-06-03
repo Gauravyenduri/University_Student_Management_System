@@ -1,0 +1,299 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}Student Management System{% endblock %}</title>
+    <link rel="stylesheet" href="{{ url_for('static', path='/css/style.css') }}"> {# Link to your base CSS #}
+    <script src="https://cdn.tailwindcss.com"></script> {# Tailwind CDN #}
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css"> {# Font Awesome #}
+    {% block head_extra %}{% endblock %} {# For page-specific CSS/JS in head #}
+</head>
+<body class="bg-gradient-to-br from-gray-50 to-gray-100 font-sans overflow-hidden"> {# Prevent body scroll #}
+
+    <div class="flex h-screen bg-gradient-to-br from-gray-50 to-gray-100"> {# Fix height, use flex #}
+
+        <!-- Sidebar -->
+        {# --- Use flex-col to stack items vertically --- #}
+        <aside class="w-64 bg-gradient-to-br from-indigo-900 to-purple-900 text-gray-100 p-4 hidden md:flex md:flex-col shadow-xl flex-shrink-0 h-screen border-r border-indigo-800"> {# Full height sidebar #}
+            <script>
+                // Initialize dropdowns based on current URL
+                document.addEventListener('DOMContentLoaded', function() {
+                    const currentPath = window.location.pathname;
+                    const dropdowns = document.querySelectorAll('[id$="-icon"]').forEach(icon => {
+                        const id = icon.id.replace('-icon', '');
+                        const content = document.getElementById(id);
+                        const links = content.querySelectorAll('a');
+                        
+                        // Check if any child link matches current path
+                        const shouldExpand = Array.from(links).some(link => {
+                            return currentPath.startsWith(new URL(link.href).pathname);
+                        });
+                        
+                        if (shouldExpand) {
+                            content.style.display = 'block';
+                            icon.classList.remove('fa-chevron-right');
+                            icon.classList.add('fa-chevron-down');
+                        }
+                    });
+                });
+
+                function toggleCategory(id) {
+                    const content = document.getElementById(id);
+                    const icon = document.getElementById(id + '-icon');
+                    const allDropdowns = document.querySelectorAll('[id$="-icon"]');
+                    
+                    // Close all other dropdowns
+                    allDropdowns.forEach(dropdownIcon => {
+                        const dropdownId = dropdownIcon.id.replace('-icon', '');
+                        if (dropdownId !== id) {
+                            const otherContent = document.getElementById(dropdownId);
+                            if (otherContent) {
+                                otherContent.style.display = 'none';
+                                dropdownIcon.classList.remove('fa-chevron-down');
+                                dropdownIcon.classList.add('fa-chevron-right');
+                            }
+                        }
+                    });
+
+                    // Toggle current dropdown
+                    if (content.style.display === 'none' || !content.style.display) {
+                        content.style.display = 'block';
+                        icon.classList.remove('fa-chevron-right');
+                        icon.classList.add('fa-chevron-down');
+                    } else {
+                        content.style.display = 'none';
+                        icon.classList.remove('fa-chevron-down');
+                        icon.classList.add('fa-chevron-right');
+                    }
+                }
+            </script>
+            
+            {# Sidebar Header (Fixed Top) #}
+            <div class="flex-shrink-0 text-center pt-4 mb-8"> {# Header section #}
+                <i class="fas fa-book-reader text-indigo-300 text-4xl mb-3 transform hover:scale-110 transition-transform duration-200"></i>
+                <a href="/" class="block text-2xl font-bold text-white hover:text-indigo-300 transition duration-200">SMS Portal</a>
+            </div>
+
+            {# Navigation Links (Scrollable Area) #}
+            <nav class="flex-grow overflow-y-auto text-sm space-y-1 mb-auto"> {# Scrollable nav with auto margin bottom #}
+
+                {# --- Role-Based Links --- #}
+                {% if user %} {# Check if user object exists (i.e., logged in) #}
+
+                    {# === ADMIN === #}
+                    {% if user.role == UserRole.ADMIN %}
+                        <a href="{{ url_for('admin_dashboard') }}" class="flex items-center py-3 px-4 rounded-lg hover:bg-indigo-800/50 transition-all duration-200 ">
+                            <i class="fas fa-tachometer-alt mr-2"></i> Dashboard</a>
+                        
+                        <!-- Academic Management -->
+                        <div class="mt-4">
+                            <button onclick="toggleCategory('academic')" class="w-full flex items-center justify-between py-2 px-3 rounded hover:bg-indigo-800/50 transition-all duration-200 text-gray-200 hover:text-white">
+                                <span><i class="fas fa-graduation-cap mr-2"></i> Academic Management</span>
+                                <i id="academic-icon" class="fas fa-chevron-right transition-transform duration-200"></i>
+                            </button>
+                            <div id="academic" class="pl-4 space-y-1" style="display: none;">
+                                <a href="{{ url_for('admin_manage_departments_list') }}" class="flex items-center py-2 px-3 rounded hover:bg-indigo-800/50 transition-all duration-200 {% if request.url.path.startswith('/admin/departments') %}bg-indigo-700/60 text-white font-medium shadow-lg{% else %}text-gray-200 hover:text-white{% endif %}">
+                                    <i class="fas fa-building mr-2"></i> Departments</a>
+                                <a href="{{ url_for('admin_manage_courses_list') }}" class="flex items-center py-2 px-3 rounded hover:bg-indigo-800/50 transition-all duration-200 {% if request.url.path.startswith('/admin/courses') %}bg-indigo-700/60 text-white font-medium shadow-lg{% else %}text-gray-200 hover:text-white{% endif %}">
+                                    <i class="fas fa-book mr-2"></i> Courses</a>
+                                <a href="{{ url_for('admin_manage_schedules_list') }}" class="flex items-center py-2 px-3 rounded hover:bg-indigo-800/50 transition-all duration-200 {% if request.url.path.startswith('/admin/schedules') %}bg-indigo-700/60 text-white font-medium shadow-lg{% else %}text-gray-200 hover:text-white{% endif %}">
+                                    <i class="fas fa-calendar-alt mr-2"></i> Schedules</a>
+                            </div>
+                        </div>
+
+                        <!-- User Management -->
+                        <div class="mt-2">
+                            <button onclick="toggleCategory('users')" class="w-full flex items-center justify-between py-2 px-3 rounded hover:bg-indigo-800/50 transition-all duration-200 text-gray-200 hover:text-white">
+                                <span><i class="fas fa-users mr-2"></i> User Management</span>
+                                <i id="users-icon" class="fas fa-chevron-right transition-transform duration-200"></i>
+                            </button>
+                            <div id="users" class="pl-4 space-y-1" style="display: none;">
+                                <a href="{{ url_for('admin_manage_students_list') }}" class="flex items-center py-2 px-3 rounded hover:bg-indigo-800/50 transition-all duration-200 {% if request.url.path.startswith('/admin/students') %}bg-indigo-700/60 text-white font-medium shadow-lg{% else %}text-gray-200 hover:text-white{% endif %}">
+                                    <i class="fas fa-user-graduate mr-2"></i> Students</a>
+                                <a href="{{ url_for('admin_manage_instructors_list') }}" class="flex items-center py-2 px-3 rounded hover:bg-indigo-800/50 transition-all duration-200 {% if request.url.path.startswith('/admin/instructors') %}bg-indigo-700/60 text-white font-medium shadow-lg{% else %}text-gray-200 hover:text-white{% endif %}">
+                                    <i class="fas fa-chalkboard-teacher mr-2"></i> Instructors</a>
+                                <a href="{{ url_for('admin_manage_alumni') }}" class="flex items-center py-2 px-3 rounded hover:bg-indigo-800/50 transition-all duration-200 {% if request.url.path.startswith('/admin/alumni') %}bg-indigo-700/60 text-white font-medium shadow-lg{% else %}text-gray-200 hover:text-white{% endif %}">
+                                    <i class="fas fa-user-graduate mr-2"></i> Alumni</a>
+                            </div>
+                        </div>
+
+                        <!-- Facility Management -->
+                        <div class="mt-2">
+                            <button onclick="toggleCategory('facilities')" class="w-full flex items-center justify-between py-2 px-3 rounded hover:bg-indigo-800/50 transition-all duration-200 text-gray-200 hover:text-white">
+                                <span><i class="fas fa-building mr-2"></i> Facility Management</span>
+                                <i id="facilities-icon" class="fas fa-chevron-right transition-transform duration-200"></i>
+                            </button>
+                            <div id="facilities" class="pl-4 space-y-1" style="display: none;">
+                                <a href="{{ url_for('admin_manage_classrooms_list') }}" class="flex items-center py-2 px-3 rounded hover:bg-indigo-800/50 transition-all duration-200 {% if request.url.path.startswith('/admin/classrooms') %}bg-indigo-700/60 text-white font-medium shadow-lg{% else %}text-gray-200 hover:text-white{% endif %}">
+                                    <i class="fas fa-door-open mr-2"></i> Classrooms</a>
+                                <a href="{{ url_for('admin_manage_library_records') }}" class="flex items-center py-2 px-3 rounded hover:bg-indigo-800/50 transition-all duration-200 {% if request.url.path.startswith('/admin/library') %}bg-indigo-700/60 text-white font-medium shadow-lg{% else %}text-gray-200 hover:text-white{% endif %}">
+                                    <i class="fas fa-book-reader mr-2"></i> Library</a>
+                                <a href="{{ url_for('admin_manage_hostels') }}" class="flex items-center py-2 px-3 rounded hover:bg-indigo-800/50 transition-all duration-200 {% if request.url.path.startswith('/admin/hostels') %}bg-indigo-700/60 text-white font-medium shadow-lg{% else %}text-gray-200 hover:text-white{% endif %}">
+                                    <i class="fas fa-home mr-2"></i> Hostels</a>
+                            </div>
+                        </div>
+
+                        <!-- Financial Management -->
+                        <div class="mt-2">
+                            <button onclick="toggleCategory('financial')" class="w-full flex items-center justify-between py-2 px-3 rounded hover:bg-indigo-800/50 transition-all duration-200 text-gray-200 hover:text-white">
+                                <span><i class="fas fa-money-bill-wave mr-2"></i> Financial Management</span>
+                                <i id="financial-icon" class="fas fa-chevron-right transition-transform duration-200"></i>
+                            </button>
+                            <div id="financial" class="pl-4 space-y-1" style="display: none;">
+                                <a href="{{ url_for('admin_manage_fees_list') }}" class="flex items-center py-2 px-3 rounded hover:bg-indigo-800/50 transition-all duration-200 {% if request.url.path.startswith('/admin/fees') %}bg-indigo-700/60 text-white font-medium shadow-lg{% else %}text-gray-200 hover:text-white{% endif %}">
+                                    <i class="fas fa-money-bill-wave mr-2"></i> Fees</a>
+                                <a href="{{ url_for('admin_manage_scholarships_list') }}" class="flex items-center py-2 px-3 rounded hover:bg-indigo-800/50 transition-all duration-200 {% if request.url.path.startswith('/admin/scholarships/definitions') %}bg-indigo-700/60 text-white font-medium shadow-lg{% else %}text-gray-200 hover:text-white{% endif %}">
+                                    <i class="fas fa-graduation-cap mr-2"></i> Scholarships</a>
+                                <a href="{{ url_for('admin_manage_scholarship_assignments_list') }}" class="flex items-center py-2 px-3 rounded hover:bg-indigo-800/50 transition-all duration-200 {% if request.url.path.startswith('/admin/scholarships/assignments') %}bg-indigo-700/60 text-white font-medium shadow-lg{% else %}text-gray-200 hover:text-white{% endif %}">
+                                    <i class="fas fa-award mr-2"></i> Assign Scholarships</a>
+                            </div>
+                        </div>
+
+                        <!-- Student Services -->
+                        <div class="mt-2">
+                            <button onclick="toggleCategory('services')" class="w-full flex items-center justify-between py-2 px-3 rounded hover:bg-indigo-800/50 transition-all duration-200 text-gray-200 hover:text-white">
+                                <span><i class="fas fa-concierge-bell mr-2"></i> Student Services</span>
+                                <i id="services-icon" class="fas fa-chevron-right transition-transform duration-200"></i>
+                            </button>
+                            <div id="services" class="pl-4 space-y-1" style="display: none;">
+                                <a href="{{ url_for('admin_manage_clubs') }}" class="flex items-center py-2 px-3 rounded hover:bg-indigo-800/50 transition-all duration-200 {% if request.url.path.startswith('/admin/clubs') %}bg-indigo-700/60 text-white font-medium shadow-lg{% else %}text-gray-200 hover:text-white{% endif %}">
+                                    <i class="fas fa-users mr-2"></i> Clubs</a>
+                                <a href="{{ url_for('admin_manage_complaints') }}" class="flex items-center py-2 px-3 rounded hover:bg-indigo-800/50 transition-all duration-200 {% if request.url.path.startswith('/admin/complaints') %}bg-indigo-700/60 text-white font-medium shadow-lg{% else %}text-gray-200 hover:text-white{% endif %}">
+                                    <i class="fas fa-comment-alt mr-2"></i> Complaints</a>
+                            </div>
+                        </div>
+
+
+                    {# --- INSTRUCTOR --- #}
+                    {% elif user.role == UserRole.INSTRUCTOR %}
+                         <a href="{{ url_for('instructor_dashboard') }}" class="flex items-center py-3 px-4 rounded-lg hover:bg-indigo-800/50 transition-all duration-200 {% if request.url.path == url_for('instructor_dashboard') %}bg-indigo-700/60 text-white font-medium shadow-lg{% else %}text-gray-200 hover:text-white{% endif %}">
+                            <i class="fas fa-tachometer-alt mr-2"></i> Dashboard</a>
+                         <a href="{{ url_for('instructor_attendance_form') }}" class="flex items-center py-3 px-4 rounded-lg hover:bg-indigo-800/50 transition-all duration-200 {% if request.url.path.startswith('/instructor/attendance') %}bg-indigo-700/60 text-white font-medium shadow-lg{% else %}text-gray-200 hover:text-white{% endif %}">
+                            <i class="fas fa-clipboard-check mr-2"></i> Mark Attendance</a>
+                         <a href="{{ url_for('instructor_manage_exams') }}" class="flex items-center py-3 px-4 rounded-lg hover:bg-indigo-800/50 transition-all duration-200 {% if request.url.path.startswith('/instructor/exams') %}bg-indigo-700/60 text-white font-medium shadow-lg{% else %}text-gray-200 hover:text-white{% endif %}">
+                            <i class="fas fa-file-alt mr-2"></i> Manage Exams</a>
+                        <a href="{{ url_for('manage_discipline_records') }}" class="flex items-center py-3 px-4 rounded-lg hover:bg-indigo-800/50 transition-all duration-200 {% if request.url.path.startswith('/instructor/discipline') %}bg-indigo-700/60 text-white font-medium shadow-lg{% else %}text-gray-200 hover:text-white{% endif %}"><i class="fas fa-gavel mr-2"></i> Discipline Records</a>
+                         <a href="{{ url_for('showcase_alumni') }}" class="flex items-center py-3 px-4 rounded-lg hover:bg-indigo-800/50 transition-all duration-200 {% if request.url.path.startswith('/showcase/alumni') %}bg-indigo-700/60 text-white font-medium shadow-lg{% else %}text-gray-200 hover:text-white{% endif %}">
+                            <i class="fas fa-user-graduate mr-2"></i> Alumni Showcase</a>
+
+                    {# --- STUDENT --- #}
+                    {% elif user.role == UserRole.STUDENT %}
+                         <a href="{{ url_for('student_dashboard') }}" class="flex items-center py-3 px-4 rounded-lg hover:bg-indigo-800/50 transition-all duration-200 {% if request.url.path == url_for('student_dashboard') %}bg-indigo-700/60 text-white font-medium shadow-lg{% else %}text-gray-200 hover:text-white{% endif %}">
+                            <i class="fas fa-tachometer-alt mr-2"></i> Dashboard</a>
+                         
+                         <!-- Academic Information -->
+                         <div class="mt-4">
+                             <button onclick="toggleCategory('student-academic')" class="w-full flex items-center justify-between py-2 px-3 rounded hover:bg-indigo-800/50 transition-all duration-200 text-gray-200 hover:text-white">
+                                 <span><i class="fas fa-graduation-cap mr-2"></i> Academic</span>
+                                 <i id="student-academic-icon" class="fas fa-chevron-right transition-transform duration-200"></i>
+                             </button>
+                             <div id="student-academic" class="pl-4 space-y-1" style="display: none;">
+                                 <a href="{{ url_for('student_profile_page') }}" class="flex items-center py-2 px-3 rounded hover:bg-indigo-800/50 transition-all duration-200 {% if request.url.path.startswith('/student/profile') %}bg-indigo-700/60 text-white font-medium shadow-lg{% else %}text-gray-200 hover:text-white{% endif %}">
+                                    <i class="fas fa-user mr-2"></i> My Profile</a>
+                                 <a href="{{ url_for('student_enrollments_page') }}" class="flex items-center py-2 px-3 rounded hover:bg-indigo-800/50 transition-all duration-200 {% if request.url.path.startswith('/student/enrollments') %}bg-indigo-700/60 text-white font-medium shadow-lg{% else %}text-gray-200 hover:text-white{% endif %}">
+                                    <i class="fas fa-book-open mr-2"></i> My Enrollments</a>
+                                 <a href="{{ url_for('student_schedule_page') }}" class="flex items-center py-2 px-3 rounded hover:bg-indigo-800/50 transition-all duration-200 {% if request.url.path.startswith('/student/my-schedule') %}bg-indigo-700/60 text-white font-medium shadow-lg{% else %}text-gray-200 hover:text-white{% endif %}">
+                                    <i class="fas fa-calendar-alt mr-2"></i> My Schedule</a>
+                             </div>
+                         </div>
+
+                         <!-- Performance -->
+                         <div class="mt-2">
+                             <button onclick="toggleCategory('student-performance')" class="w-full flex items-center justify-between py-2 px-3 rounded hover:bg-indigo-800/50 transition-all duration-200 text-gray-200 hover:text-white">
+                                 <span><i class="fas fa-chart-line mr-2"></i> Performance</span>
+                                 <i id="student-performance-icon" class="fas fa-chevron-right transition-transform duration-200"></i>
+                             </button>
+                             <div id="student-performance" class="pl-4 space-y-1" style="display: none;">
+                                 <a href="{{ url_for('student_attendance_page') }}" class="flex items-center py-2 px-3 rounded hover:bg-indigo-800/50 transition-all duration-200 {% if request.url.path.startswith('/student/my-attendance') %}bg-indigo-700/60 text-white font-medium shadow-lg{% else %}text-gray-200 hover:text-white{% endif %}">
+                                    <i class="fas fa-clipboard-check mr-2"></i> My Attendance</a>
+                                 <a href="{{ url_for('student_exams_page') }}" class="flex items-center py-2 px-3 rounded hover:bg-indigo-800/50 transition-all duration-200 {% if request.url.path.startswith('/student/my-exams') %}bg-indigo-700/60 text-white font-medium shadow-lg{% else %}text-gray-200 hover:text-white{% endif %}">
+                                    <i class="fas fa-file-alt mr-2"></i> My Exams</a>
+                             </div>
+                         </div>
+
+                         <!-- Campus Services -->
+                         <div class="mt-2">
+                             <button onclick="toggleCategory('student-services')" class="w-full flex items-center justify-between py-2 px-3 rounded hover:bg-indigo-800/50 transition-all duration-200 text-gray-200 hover:text-white">
+                                 <span><i class="fas fa-concierge-bell mr-2"></i> Campus Services</span>
+                                 <i id="student-services-icon" class="fas fa-chevron-right transition-transform duration-200"></i>
+                             </button>
+                             <div id="student-services" class="pl-4 space-y-1" style="display: none;">
+                                 <a href="{{ url_for('student_library_page') }}" class="flex items-center py-2 px-3 rounded hover:bg-indigo-800/50 transition-all duration-200 {% if request.url.path.startswith('/student/my-library') %}bg-indigo-700/60 text-white font-medium shadow-lg{% else %}text-gray-200 hover:text-white{% endif %}">
+                                     <i class="fas fa-book-reader mr-2"></i> My Library</a>
+                                 <a href="{{ url_for('student_clubs_page') }}" class="flex items-center py-2 px-3 rounded hover:bg-indigo-800/50 transition-all duration-200 {% if request.url.path.startswith('/student/my-clubs') %}bg-indigo-700/60 text-white font-medium shadow-lg{% else %}text-gray-200 hover:text-white{% endif %}">
+                                    <i class="fas fa-users mr-2"></i> My Clubs</a>
+                                 <a href="{{ url_for('student_complaints_page') }}" class="flex items-center py-2 px-3 rounded hover:bg-indigo-800/50 transition-all duration-200 {% if request.url.path.startswith('/student/my-complaints') %}bg-indigo-700/60 text-white font-medium shadow-lg{% else %}text-gray-200 hover:text-white{% endif %}">
+                                     <i class="fas fa-comment-alt mr-2"></i> My Complaints</a>
+                             </div>
+                         </div>
+
+                         <!-- Financial -->
+                         <div class="mt-2">
+                             <button onclick="toggleCategory('student-financial')" class="w-full flex items-center justify-between py-2 px-3 rounded hover:bg-indigo-800/50 transition-all duration-200 text-gray-200 hover:text-white">
+                                 <span><i class="fas fa-money-bill-wave mr-2"></i> Financial</span>
+                                 <i id="student-financial-icon" class="fas fa-chevron-right transition-transform duration-200"></i>
+                             </button>
+                             <div id="student-financial" class="pl-4 space-y-1" style="display: none;">
+                                 <a href="{{ url_for('student_fees_page') }}" class="flex items-center py-2 px-3 rounded hover:bg-indigo-800/50 transition-all duration-200 {% if request.url.path.startswith('/student/my-fees') %}bg-indigo-700/60 text-white font-medium shadow-lg{% else %}text-gray-200 hover:text-white{% endif %}">
+                                    <i class="fas fa-money-bill-wave mr-2"></i> My Fees</a>
+                             </div>
+                         </div>
+
+                         <!-- Alumni -->
+                         <div class="mt-2">
+                             <a href="{{ url_for('showcase_alumni') }}" class="flex items-center py-2 px-3 rounded hover:bg-indigo-800/50 transition-all duration-200 {% if request.url.path.startswith('/showcase/alumni') %}bg-indigo-700/60 text-white font-medium shadow-lg{% else %}text-gray-200 hover:text-white{% endif %}">
+                                <i class="fas fa-user-graduate mr-2"></i> Alumni Showcase</a>
+                         </div>
+                    {% endif %}
+
+
+                {% else %} {# --- User NOT logged in --- #}
+                      <a href="{{ url_for('login_form') }}" class="flex items-center py-2.5 px-3 rounded hover:bg-gray-700 transition duration-150 text-gray-300 hover:text-white text-sm">
+                            <span class="w-5 h-5 mr-2 flex-shrink-0 text-current"> <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 16l-4-4m0 0l4-4m-4 4h14m-5 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h7a3 3 0 013 3v1"></path></svg> </span> Login</a>
+                {% endif %} {# --- End user check --- #}
+            </nav>
+            
+            {# Fixed Footer Section #}
+            <div class="pt-4 mt-auto border-t border-indigo-800/30 flex-shrink-0">
+                <a href="{{ url_for('change_password_form') }}" class="flex items-center py-2.5 px-3 rounded hover:bg-indigo-800/50 transition duration-150 text-sm {% if request.url.path == url_for('change_password_form') %}bg-gray-900 text-white font-medium{% else %}text-gray-300 hover:text-white{% endif %}">
+                    <span class="w-5 h-5 mr-2 flex-shrink-0 text-current"> <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z"></path></svg> </span> Change Password</a>
+                 <form action="{{ url_for('logout') }}" method="post" class="w-full mt-1">
+                    <button type="submit" class="w-full text-left flex items-center py-2.5 px-3 rounded text-red-300 hover:bg-red-600 hover:text-white transition duration-150 text-sm">
+                       <span class="w-5 h-5 mr-2 flex-shrink-0 text-current"> <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"></path></svg> </span> Logout
+                    </button>
+                </form>
+            </div>
+
+        </aside>
+
+        {# Main Content Area Container (No changes here) #}
+        <div class="flex-1 flex flex-col overflow-hidden">
+            {# Top Header Bar #}
+            <header class="bg-white shadow-md p-4 h-16 flex justify-between items-center flex-shrink-0 border-b border-gray-200">
+                <div class="flex items-center">
+                     <button id="mobile-menu-button" class="md:hidden mr-3 text-gray-600 hover:text-gray-800 focus:outline-none">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16m-7 6h7"></path></svg>
+                     </button>
+                     <h1 class="text-xl font-semibold text-gray-700">{% block page_title %}Dashboard{% endblock %}</h1>
+                </div>
+                <div class="flex items-center space-x-3">
+                    {% if user %} <span class="text-gray-600 text-sm hidden sm:inline">Welcome, {{ user.username }} ({{ user.role.value }})</span>
+                    {% else %} <a href="{{ url_for('login_form') }}" class="btn btn-secondary btn-sm">Login</a>
+                    {% endif %}
+                </div>
+            </header>
+
+            {# Scrollable Page Content Area #}
+            <main class="flex-1 overflow-x-hidden overflow-y-auto bg-gradient-to-br from-gray-50 to-gray-100 p-6 md:p-8">
+                {% block content %} <p>Default content - replace this in child templates.</p> {% endblock %}
+            </main>
+
+        </div>{# End Main Content Area Container #}
+    </div>{# End Top Level Flex Container #}
+
+    {% block modals %}{% endblock %}
+    {% block scripts_extra %}{% endblock %}
+
+</body>
+</html>

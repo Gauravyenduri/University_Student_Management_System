@@ -1,0 +1,359 @@
+{% extends "layout.html" %}
+{% block title %}Manage Exams{% endblock %}
+{% block page_title %}Manage Exams{% endblock %}
+
+{% block head_extra %}
+<style>
+    /* --- Styles --- */
+    #toast-container { position: fixed; top: 1.5rem; right: 1.5rem; z-index: 100; display: flex; flex-direction: column; gap: 0.75rem; }
+    .toast { display: flex; align-items: center; padding: 0.75rem 1rem; border-radius: 0.5rem; box-shadow: 0 10px 15px -3px rgba(0,0,0,0.1), 0 4px 6px -2px rgba(0,0,0,0.05); border-width: 1px; min-width: 250px; max-width: 400px; opacity: 0; transform: translateX(100%); transition: opacity 0.3s ease-out, transform 0.3s ease-out; pointer-events: none; /* Prevent interaction while hidden */}
+    .toast.show { opacity: 1; transform: translateX(0); pointer-events: auto; /* Allow interaction when shown */ }
+    .toast-success { background-color: #dcfce7; border-color: #4ade80; color: #166534; }
+    .toast-error { background-color: #fee2e2; border-color: #f87171; color: #991b1b; }
+    .toast-info { background-color: #e0f2fe; border-color: #60a5fa; color: #1e40af; }
+    .toast-icon { margin-right: 0.75rem; flex-shrink: 0; }
+    .toast-message { flex-grow: 1; font-size: 0.875rem; line-height: 1.25rem; word-break: break-word;}
+    .toast-close { margin-left: 1rem; background: transparent; border: none; color: inherit; opacity: 0.7; cursor: pointer; font-size: 1.2rem; line-height: 1;}
+    .toast-close:hover { opacity: 1; }
+
+     /* Standard input/select styling */
+    .form-input, .form-select, .form-textarea {
+        appearance: none; border-radius: 0.375rem; /* rounded-md */ position: relative; display: block; width: 100%;
+        padding-left: 0.75rem; padding-right: 0.75rem; /* px-3 */ padding-top: 0.5rem; padding-bottom: 0.5rem; /* py-2 */
+        border-width: 1px; border-color: #d1d5db; /* border-gray-300 */ --tw-shadow: 0 0 #0000; box-shadow: var(--tw-ring-offset-shadow, 0 0 #0000), var(--tw-ring-shadow, 0 0 #0000), var(--tw-shadow);
+        placeholder-color: #6b7280; /* placeholder-gray-500 */ color: #111827; /* text-gray-900 */
+    }
+     .form-input:focus, .form-select:focus, .form-textarea:focus {
+        outline: 2px solid transparent; outline-offset: 2px; z-index: 10;
+        --tw-ring-color: #3b82f6; border-color: #3b82f6; /* focus:ring-blue-500 focus:border-blue-500 */
+         --tw-ring-offset-shadow: var(--tw-ring-inset) 0 0 0 var(--tw-ring-offset-width) var(--tw-ring-offset-color);
+         --tw-ring-shadow: var(--tw-ring-inset) 0 0 0 calc(1px + var(--tw-ring-offset-width)) var(--tw-ring-color);
+    }
+     .form-select { background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%236b7280' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M6 8l4 4 4-4'/%3e%3c/svg%3e"); background-position: right 0.5rem center; background-repeat: no-repeat; background-size: 1.5em 1.5em; padding-right: 2.5rem; -webkit-print-color-adjust: exact; color-adjust: exact; }
+     .form-checkbox { height: 1rem; width: 1rem; color: #4f46e5; border-color: #d1d5db; border-radius: 0.25rem; /* rounded */ }
+     .form-checkbox:focus { --tw-ring-color: #4f46e5; /* focus:ring-indigo-500 */ }
+
+     /* Simple Button Styles */
+     .btn { display: inline-flex; align-items: center; justify-content: center; padding-left: 1rem; padding-right: 1rem; padding-top: 0.5rem; padding-bottom: 0.5rem; border-width: 1px; border-color: transparent; font-size: 0.875rem; line-height: 1.25rem; font-weight: 500; border-radius: 0.375rem; --tw-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05); box-shadow: var(--tw-ring-offset-shadow, 0 0 #0000), var(--tw-ring-shadow, 0 0 #0000), var(--tw-shadow); transition-property: color, background-color, border-color, text-decoration-color, fill, stroke; transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1); transition-duration: 150ms; }
+     .btn:focus { outline: 2px solid transparent; outline-offset: 2px; --tw-ring-offset-shadow: var(--tw-ring-inset) 0 0 0 var(--tw-ring-offset-width) var(--tw-ring-offset-color); --tw-ring-shadow: var(--tw-ring-inset) 0 0 0 calc(2px + var(--tw-ring-offset-width)) var(--tw-ring-color); box-shadow: var(--tw-ring-offset-shadow), var(--tw-ring-shadow), var(--tw-shadow, 0 0 #0000); }
+     .btn-primary { color: #ffffff; background-color: #2563eb; --tw-ring-color: #2563eb;} .btn-primary:hover { background-color: #1d4ed8;} .btn-primary:focus { --tw-ring-offset-color: #ffffff;}
+     .btn-secondary { color: #374151; background-color: #ffffff; border-color: #d1d5db;} .btn-secondary:hover { background-color: #f9fafb;} .btn-secondary:focus { --tw-ring-color: #4f46e5;}
+     .btn-danger-text { color: #dc2626; } .btn-danger-text:hover { color: #b91c1c; text-decoration-line: underline; }
+     .btn-info-text { color: #4f46e5; } .btn-info-text:hover { color: #3730a3; text-decoration-line: underline; }
+     .btn-success-text { color: #16a34a; } .btn-success-text:hover { color: #15803d; text-decoration-line: underline; }
+
+</style>
+{% endblock %}
+
+{% block content %}
+<div id="exam-manager-wrapper"> {# Wrapper ID #}
+
+    {# Course Selection Filter #}
+    <div class="mb-6 bg-white p-4 rounded-lg shadow border border-gray-200">
+        <form id="course-filter-form" method="GET" action="{{ request.url_for('instructor_manage_exams') }}" class="grid grid-cols-1 md:grid-cols-3 gap-4 items-end">
+            <div>
+                <label for="course_id_select_filter" class="block text-sm font-medium text-gray-700 mb-1">Select Course:</label>
+                <select id="course_id_select_filter" name="course_id" required class="form-select" onchange="this.form.submit()">
+                    <option value="">-- Select Course to View/Manage Exams --</option>
+                    {% for course in teaching_courses %}
+                        <option value="{{ course.id }}" {% if selected_course_id == course.id %}selected{% endif %}>
+                            {{ course.name }} (ID: {{ course.id }})
+                        </option>
+                    {% endfor %}
+                </select>
+            </div>
+        </form>
+    </div>
+
+    {# Toast Container #}
+    <div id="toast-container"></div>
+
+    {# Conditional Display based on Course Selection #}
+    {% if selected_course_id %}
+        {# Header & Add Button for Exam Definition #}
+        <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 gap-4">
+            <h2 class="text-2xl font-semibold text-gray-800">Exams for: <span class="text-blue-700">{{ selected_course_name or 'Selected Course' }}</span></h2>
+            <button id="add-exam-def-btn" class="btn btn-primary whitespace-nowrap"> {# Changed class #}
+               Add New Exam Definition
+            </button>
+        </div>
+
+        {# Exam List Table #}
+        <div class="bg-white p-4 md:p-6 rounded-lg shadow overflow-x-auto">
+            <table class="min-w-full divide-y divide-gray-200">
+                <thead class="bg-gray-50"><tr><th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">ID</th><th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Name</th><th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Type</th><th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date</th><th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Total Marks</th><th class="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Published</th><th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th></tr></thead>
+                <tbody id="exam-table-body" class="bg-white divide-y divide-gray-200"> {# ID Needed #}
+                    {% if exams %}
+                        {% for exam in exams %}
+                        <tr>
+                            <td class="px-4 py-4 whitespace-nowrap text-sm text-gray-700">{{ exam.id }}</td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{{ exam.name }}</td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-600">{{ exam.type.value if exam.type else 'N/A' }}</td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-600">{{ exam.date.strftime('%Y-%m-%d') if exam.date else 'N/A' }}</td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-right text-gray-700">{{ "%.1f"|format(exam.total_marks | default(0.0)) }}</td>
+                            <td class="px-6 py-4 text-center">
+                                <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full {{ 'bg-green-100 text-green-800' if exam.is_published else 'bg-gray-100 text-gray-600' }}">
+                                    {{ 'Yes' if exam.is_published else 'No' }}
+                                </span>
+                            </td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm font-medium space-x-3">
+                                <button type="button" class="edit-exam-def-btn btn-info-text" {# Changed class #}
+                                        data-exam-id="{{ exam.id }}" data-name="{{ exam.name | e }}" data-type="{{ exam.type.value if exam.type else '' }}"
+                                        data-date="{{ exam.date.isoformat() if exam.date else '' }}" data-description="{{ exam.description | default('', true) | e }}"
+                                        data-is-published="{{ 'true' if exam.is_published else 'false' }}">Details</button>
+                                <a href="{{ url_for('instructor_edit_exam_mcqs', exam_id=exam.id) }}" class="btn-success-text">Questions</a> {# Changed class #}
+                                <form action="{{ url_for('instructor_delete_exam_definition', exam_id=exam.id) }}" method="post" class="inline delete-exam-def-form">
+                                    <button type="submit" class="btn-danger-text">Delete</button> {# Changed class #}
+                                </form>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    {% else %} <tr><td colspan="7" class="text-center py-4 text-gray-500">No exams found for this course. Add one using the button above.</td></tr>
+                    {% endif %}
+                </tbody>
+            </table>
+        </div>
+    {% else %}
+        <div class="text-center py-10 px-4 bg-white rounded-lg shadow border border-gray-200"> <svg class="mx-auto h-12 w-12 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true"> <path vector-effect="non-scaling-stroke" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 13h6m-3-3v6m-9 1V7a2 2 0 012-2h6l2 2h6a2 2 0 012 2v8a2 2 0 01-2 2H5a2 2 0 01-2-2z" /> </svg><h3 class="mt-2 text-sm font-medium text-gray-900">No Course Selected</h3> <p class="mt-1 text-sm text-gray-500">Please select a course from the dropdown above to view or manage its exams.</p> </div>
+    {% endif %}
+
+    {# Exam Definition Modal - Check IDs #}
+    <div id="exam-def-modal" class="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-0 hidden" aria-labelledby="modal-title-def" role="dialog" aria-modal="true">
+         <div id="modal-overlay-def" class="fixed inset-0 bg-black/50 backdrop-blur-sm" aria-hidden="true"></div>
+         <div id="modal-dialog-def" class="relative w-full max-w-xl overflow-hidden rounded-lg bg-white p-6 shadow-xl sm:my-8 sm:w-full sm:max-w-xl transform transition-all">
+             <div class="flex items-center justify-between pb-3 border-b border-gray-200"> {# Added border color #}
+                 <h3 id="modal-title-def" class="text-lg font-semibold leading-6 text-gray-900">Modal Title</h3>
+                 <button id="modal-close-btn-def" type="button" class="p-1 rounded-full text-gray-400 hover:bg-gray-200 hover:text-gray-600 focus:outline-none focus:ring-2 focus:ring-indigo-500"> {# Improved hover/focus #}
+                    <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" aria-hidden="true"> <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" /> </svg>
+                 </button>
+             </div>
+             <div class="mt-5">
+                 <div id="modal-error-area-def" class="hidden p-3 mb-4 text-sm text-red-700 bg-red-100 rounded-lg border border-red-300" role="alert"></div>
+                 <form id="modal-form-def" action="#" method="post" class="space-y-4">
+                     <input type="hidden" id="modal-course-id-def" name="course_id_str" value="">
+                     <div class="grid grid-cols-1 md:grid-cols-2 gap-x-4 gap-y-4"> {# Grid for better layout #}
+                         <div class="md:col-span-2"> <label for="modal-exam-name-def" class="block text-sm font-medium text-gray-700 mb-1">Exam/Assignment Name:</label> <input type="text" id="modal-exam-name-def" name="name" required class="form-input"> </div>
+                         <div> <label for="modal-exam-type-def" class="block text-sm font-medium text-gray-700 mb-1">Type:</label> <select id="modal-exam-type-def" name="exam_type_str" required class="form-select"> <option value="">-- Select Type --</option> </select> </div>
+                         <div> <label for="modal-exam-date-def" class="block text-sm font-medium text-gray-700 mb-1">Date (Optional):</label> <input type="date" id="modal-exam-date-def" name="exam_date_str" class="form-input"> </div>
+                         <div class="md:col-span-2"> <label for="modal-description-def" class="block text-sm font-medium text-gray-700 mb-1">Description (Optional):</label> <textarea id="modal-description-def" name="description" rows="2" class="form-textarea"></textarea> </div>
+                         <div class="md:col-span-2 flex items-center space-x-2 pt-2">
+                             <input type="checkbox" id="modal-is-published-def" name="is_published_str" value="on" class="form-checkbox">
+                             <label for="modal-is-published-def" class="text-sm text-gray-700">Publish this exam?</label>
+                         </div>
+                     </div>
+                     <div class="flex justify-end space-x-3 pt-4 border-t border-gray-200 mt-6"> {# Added margin-top #}
+                         <button id="modal-cancel-btn-def" type="button" class="btn btn-secondary"> Cancel </button> {# Use button classes #}
+                         <button id="modal-submit-btn-def" type="submit" class="btn btn-primary"> Submit </button> {# Use button classes #}
+                     </div>
+                 </form>
+             </div>
+         </div>
+    </div>
+
+</div>{# End Wrapper #}
+
+<script>
+    // JS for the Exam DEFINITION Modal
+    try {
+        document.addEventListener('DOMContentLoaded', () => {
+            console.log("DOM loaded. Initializing Exam Definition Manager...");
+
+            // --- Elements ---
+            const elementsDef = {
+                modal: document.getElementById('exam-def-modal'),
+                overlay: document.getElementById('modal-overlay-def'),
+                dialog: document.getElementById('modal-dialog-def'),
+                modalTitle: document.getElementById('modal-title-def'),
+                modalForm: document.getElementById('modal-form-def'),
+                courseIdInput: document.getElementById('modal-course-id-def'),
+                nameInput: document.getElementById('modal-exam-name-def'),
+                typeSelect: document.getElementById('modal-exam-type-def'),
+                dateInput: document.getElementById('modal-exam-date-def'),
+                descriptionInput: document.getElementById('modal-description-def'),
+                isPublishedCheckbox: document.getElementById('modal-is-published-def'),
+                errorArea: document.getElementById('modal-error-area-def'),
+                submitBtn: document.getElementById('modal-submit-btn-def'),
+                closeBtn: document.getElementById('modal-close-btn-def'),
+                cancelBtn: document.getElementById('modal-cancel-btn-def'),
+                addBtn: document.getElementById('add-exam-def-btn'), // May be null
+                tableBody: document.getElementById('exam-table-body'), // May be null
+                toastContainer: document.getElementById('toast-container'),
+                courseFilterSelect: document.getElementById('course_id_select_filter')
+            };
+
+            // --- Element Check ---
+            let criticalElementsFound = true;
+            const essentialIDs = ['toast-container', 'course_id_select_filter', 'exam-def-modal', 'modal-overlay-def', 'modal-dialog-def', 'modal-title-def', 'modal-form-def', 'modal-course-id-def', 'modal-exam-name-def', 'modal-exam-type-def', 'modal-exam-date-def', 'modal-description-def', 'modal-is-published-def', 'modal-error-area-def', 'modal-submit-btn-def', 'modal-close-btn-def', 'modal-cancel-btn-def']; // IDs that MUST exist
+            essentialIDs.forEach(id => {
+                if (!document.getElementById(id)) {
+                    console.error(`Exam Def Init Error: Critical element '#${id}' not found.`);
+                    criticalElementsFound = false;
+                }
+            });
+             // Check conditional elements without stopping execution if null initially
+            if (!elementsDef.addBtn && elementsDef.courseFilterSelect?.value) console.warn("Add Exam button not found, but course selected.");
+            if (!elementsDef.tableBody && elementsDef.courseFilterSelect?.value) console.warn("Exam table body not found, but course selected.");
+
+            if (!criticalElementsFound) {
+                 const wrapper = document.getElementById('exam-manager-wrapper');
+                 if(wrapper) wrapper.innerHTML = '<p class="text-red-600 p-4 text-center font-bold">Page Error: Essential components missing.</p>';
+                 return; // Stop if critical modal parts missing
+            } else {
+                 console.log("All required exam definition modal elements potentially found.");
+            }
+
+            // --- Data Initialization ---
+            let examTypes = []; try { examTypes = {{ exam_types_json | safe }}; if(!Array.isArray(examTypes)) throw new Error(); } catch(e) {console.error("Parsing exam types failed", e);}
+
+            // --- Populate Selects ---
+             function populateExamTypeSelectDef() {
+                 if (!elementsDef.typeSelect) return; // Guard
+                 elementsDef.typeSelect.options.length = 1; // Keep placeholder
+                 examTypes.forEach(typeValue => {
+                     const option = document.createElement('option'); option.value = typeValue; option.textContent = typeValue;
+                     elementsDef.typeSelect.appendChild(option);
+                 });
+             }
+             populateExamTypeSelectDef(); // Populate dropdown
+
+            // --- Toast Function ---
+            const showToast = (message, type = 'info', duration = 4000) => {
+                if (!elementsDef.toastContainer) { console.warn("Toast container missing!"); return };
+                 const toast = document.createElement('div'); toast.className = `toast toast-${type}`;
+                 let iconSvg = ''; /* ... icon svg definitions ... */
+                 toast.innerHTML = `<span class="toast-icon">${iconSvg}</span> <span class="toast-message">${message}</span> <button type="button" class="toast-close" aria-label="Close">×</button>`;
+                 elementsDef.toastContainer.appendChild(toast);
+                 requestAnimationFrame(() => { toast.classList.add('show'); });
+                 const timer = setTimeout(() => { toast.classList.remove('show'); toast.addEventListener('transitionend', () => toast.remove(), { once: true }); }, duration);
+                 toast.querySelector('.toast-close').addEventListener('click', () => { clearTimeout(timer); toast.classList.remove('show'); toast.addEventListener('transitionend', () => toast.remove(), { once: true }); });
+            };
+
+            // --- Modal State & Helpers ---
+            let currentModeDef = 'add'; let editIdDef = null;
+            const closeDefModal = () => { if(elementsDef.modal) elementsDef.modal.classList.add('hidden'); resetDefForm(); };
+            const resetDefForm = () => {
+                if (elementsDef.modalForm) elementsDef.modalForm.reset();
+                if(elementsDef.typeSelect) elementsDef.typeSelect.value="";
+                if(elementsDef.isPublishedCheckbox) elementsDef.isPublishedCheckbox.checked = false; // Default to false
+                if (elementsDef.errorArea) { elementsDef.errorArea.classList.add('hidden'); elementsDef.errorArea.textContent = ''; }
+                document.querySelectorAll(`#${elementsDef.modalForm?.id} .border-red-500`).forEach(el => el.classList.remove('border-red-500'));
+            };
+
+            const openDefModal = (mode, data = null) => {
+                 // Re-check elements just in case
+                 if (!elementsDef.modal || !elementsDef.modalForm || !elementsDef.modalTitle || !elementsDef.submitBtn || !elementsDef.courseIdInput || !elementsDef.nameInput || !elementsDef.typeSelect || !elementsDef.dateInput || !elementsDef.descriptionInput || !elementsDef.isPublishedCheckbox) {
+                     console.error("Cannot open def modal: essential elements missing."); showToast("Error opening form.", "error"); return;
+                 };
+
+                 const selectedCourseId = elementsDef.courseFilterSelect ? elementsDef.courseFilterSelect.value : null;
+                 if (!selectedCourseId) { showToast("Please select a course first.", "error"); return; }
+
+                 console.log("Opening exam definition modal. Mode:", mode, "Data:", data);
+                 currentModeDef = mode; resetDefForm();
+                 elementsDef.courseIdInput.value = selectedCourseId;
+
+                 if (mode === 'add') {
+                     editIdDef = null; elementsDef.modalTitle.textContent = 'Add New Exam Definition';
+                     elementsDef.modalForm.action = `{{ url_for('instructor_add_exam_definition') }}`;
+                     elementsDef.isPublishedCheckbox.checked = false; // Default unchecked
+                     elementsDef.submitBtn.textContent = 'Add Definition';
+                 } else if (mode === 'edit' && data) {
+                     editIdDef = data.id; if (!editIdDef) {console.error("Edit mode but no ID provided."); return;}
+                     elementsDef.modalTitle.textContent = 'Edit Exam Definition';
+                     elementsDef.modalForm.action = `./exams/define/${editIdDef}/edit`; // Use relative path
+                     elementsDef.nameInput.value = data.name || '';
+                     elementsDef.typeSelect.value = data.type || '';
+                     elementsDef.dateInput.value = data.date || '';
+                     elementsDef.descriptionInput.value = data.description || '';
+                     elementsDef.isPublishedCheckbox.checked = data.isPublished === 'true';
+                     elementsDef.submitBtn.textContent = 'Update Definition';
+                 } else { console.error("Invalid modal state."); return; }
+                 elementsDef.modal.classList.remove('hidden');
+            };
+
+            // --- Delete Handler ---
+            const handleDeleteDef = (formElement) => {
+                 if(!formElement) return;
+                 const url = formElement.action;
+                 fetch(url, { method: 'POST', headers: { 'Accept': 'application/json' /* CSRF? */ }})
+                 .then(response => response.ok ? response.json() : response.json().then(err => Promise.reject(err)))
+                 .then(data => {
+                     if (data.success) { showToast(data.message || 'Exam deleted.', 'success'); formElement.closest('tr')?.remove(); } // Use optional chaining
+                     else { showToast(data.message || 'Failed to delete exam definition.', 'error'); }
+                 })
+                 .catch(error => { showToast(`Error: ${error.message || 'Could not delete exam definition.'}`, 'error'); });
+            };
+
+            // --- Event Listeners ---
+            // Add button only exists if course selected
+            if(elementsDef.addBtn) {
+                elementsDef.addBtn.addEventListener('click', () => openDefModal('add'));
+            }
+
+            // Table body only exists if course selected
+            if(elementsDef.tableBody) {
+                elementsDef.tableBody.addEventListener('click', event => {
+                     const editBtn = event.target.closest('.edit-exam-def-btn');
+                     const delForm = event.target.closest('.delete-exam-def-form');
+                     if(editBtn) {
+                         const data = {
+                             id: editBtn.dataset.examId, name: editBtn.dataset.name, type: editBtn.dataset.type,
+                             date: editBtn.dataset.date, description: editBtn.dataset.description,
+                             isPublished: editBtn.dataset.isPublished
+                         };
+                         openDefModal('edit', data);
+                     } else if(delForm) {
+                         event.preventDefault();
+                         if(confirm('Delete this exam definition and ALL its questions? Check results first.')) {
+                             handleDeleteDef(delForm);
+                         }
+                     }
+                });
+            }
+
+            // Close listeners
+            if(elementsDef.overlay) elementsDef.overlay.addEventListener('click', closeDefModal);
+            if(elementsDef.closeBtn) elementsDef.closeBtn.addEventListener('click', closeDefModal);
+            if(elementsDef.cancelBtn) elementsDef.cancelBtn.addEventListener('click', closeDefModal);
+            if(elementsDef.dialog) elementsDef.dialog.addEventListener('click', (event) => { event.stopPropagation(); });
+            window.addEventListener('keydown', (event) => { if (elementsDef.modal && !elementsDef.modal.classList.contains('hidden') && event.key === 'Escape') { closeDefModal(); }});
+
+            // Form validation
+            if(elementsDef.modalForm) {
+                elementsDef.modalForm.addEventListener('submit', (event) => {
+                    let isValid = true; let errorMsg = "";
+                    if(elementsDef.errorArea) elementsDef.errorArea.classList.add('hidden'); // Hide error first
+                    // Reset borders
+                    document.querySelectorAll(`#${elementsDef.modalForm.id} .border-red-500`).forEach(el => el.classList.remove('border-red-500'));
+
+                    if (!elementsDef.nameInput.value.trim()) { isValid = false; errorMsg += "Name is required.\n"; elementsDef.nameInput.classList.add('border-red-500'); }
+                    if (!elementsDef.typeSelect.value) { isValid = false; errorMsg += "Type is required.\n"; elementsDef.typeSelect.classList.add('border-red-500'); }
+
+                    if (!isValid) {
+                         event.preventDefault();
+                         if(elementsDef.errorArea){
+                             elementsDef.errorArea.textContent = errorMsg.trim();
+                             elementsDef.errorArea.classList.remove('hidden');
+                         }
+                         showToast("Please fix the errors in the form.", "error");
+                    }
+                 });
+            }
+
+            // --- Show Initial Toasts ---
+            const showInitialToasts = () => {
+                try { const urlParams = new URLSearchParams(window.location.search); const s = urlParams.get('toast_success'); const e = urlParams.get('toast_error'); if(s) showToast(decodeURIComponent(s),'success'); if(e) showToast(decodeURIComponent(e),'error'); if(s||e) window.history.replaceState({}, document.title, window.location.pathname); } catch(e) { console.error("Toast error", e); }
+            };
+            showInitialToasts(); // Call on load
+
+            console.log("Exam Definition Manager Initialized.");
+
+        }); // End DOMContentLoaded
+    } catch(globalError) {
+        console.error("Global JavaScript Error (Exam Def):", globalError);
+        // Attempt to show error on page if possible
+         const wrapper = document.getElementById('exam-manager-wrapper');
+         if(wrapper) wrapper.innerHTML = '<p class="text-red-600 p-4 text-center font-bold">A critical error occurred loading this page. Check console.</p>';
+    }
+</script>
+{% endblock %}

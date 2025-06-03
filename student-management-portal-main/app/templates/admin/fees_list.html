@@ -1,0 +1,448 @@
+{% extends "layout.html" %}
+{% block title %}Manage Fees{% endblock %}
+{% block page_title %}Manage Fee Payments{% endblock %}
+
+{% block head_extra %}
+<style>
+    /* --- Styles (Unchanged) --- */
+    #toast-container { position: fixed; top: 1.5rem; right: 1.5rem; z-index: 1051; display: flex; flex-direction: column; gap: 0.75rem; }
+    .toast { display: flex; align-items: center; padding: 0.75rem 1rem; border-radius: 0.5rem; box-shadow: 0 10px 15px -3px rgba(0,0,0,0.1), 0 4px 6px -2px rgba(0,0,0,0.05); border-width: 1px; min-width: 250px; max-width: 400px; opacity: 0; transform: translateX(100%); transition: opacity 0.3s ease-out, transform 0.3s ease-out; pointer-events: none; }
+    .toast.show { opacity: 1; transform: translateX(0); pointer-events: auto; }
+    .toast-success { background-color: #dcfce7; border-color: #4ade80; color: #166534; }
+    .toast-error { background-color: #fee2e2; border-color: #f87171; color: #991b1b; }
+    .toast-icon { margin-right: 0.75rem; flex-shrink: 0; }
+    .toast-message { flex-grow: 1; font-size: 0.875rem; line-height: 1.25rem; word-break: break-word;}
+    .toast-close { margin-left: 1rem; background: transparent; border: none; color: inherit; opacity: 0.7; cursor: pointer; font-size: 1.2rem; line-height: 1;}
+    .toast-close:hover { opacity: 1; }
+
+    /* Standard input/select styling (Unchanged) */
+    .form-input, .form-select, .form-textarea {
+        appearance: none; border-radius: 0.375rem; position: relative; display: block; width: 100%;
+        padding-left: 0.75rem; padding-right: 0.75rem; padding-top: 0.5rem; padding-bottom: 0.5rem;
+        border-width: 1px; border-color: #d1d5db; --tw-shadow: 0 0 #0000; box-shadow: var(--tw-ring-offset-shadow, 0 0 #0000), var(--tw-ring-shadow, 0 0 #0000), var(--tw-shadow);
+        placeholder-color: #6b7280; color: #111827;
+    }
+    .form-input:focus, .form-select:focus, .form-textarea:focus {
+        outline: 2px solid transparent; outline-offset: 2px; z-index: 10;
+        --tw-ring-color: #3b82f6; border-color: #3b82f6;
+        --tw-ring-offset-shadow: var(--tw-ring-inset) 0 0 0 var(--tw-ring-offset-width) var(--tw-ring-offset-color);
+        --tw-ring-shadow: var(--tw-ring-inset) 0 0 0 calc(1px + var(--tw-ring-offset-width)) var(--tw-ring-color);
+        box-shadow: var(--tw-ring-offset-shadow), var(--tw-ring-shadow), var(--tw-shadow, 0 0 #0000);
+    }
+    .form-select { background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%236b7280' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M6 8l4 4 4-4'/%3e%3c/svg%3e"); background-position: right 0.5rem center; background-repeat: no-repeat; background-size: 1.5em 1.5em; padding-right: 2.5rem; }
+
+    /* Button Styles (Unchanged) */
+    .btn { display: inline-flex; align-items: center; justify-content: center; padding-left: 1rem; padding-right: 1rem; padding-top: 0.5rem; padding-bottom: 0.5rem; border-width: 1px; border-color: transparent; font-size: 0.875rem; line-height: 1.25rem; font-weight: 500; border-radius: 0.375rem; box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05); transition: background-color 0.15s ease-in-out, border-color 0.15s ease-in-out; cursor: pointer; }
+    .btn:focus { outline: 2px solid transparent; outline-offset: 2px; --tw-ring-offset-shadow: var(--tw-ring-inset) 0 0 0 var(--tw-ring-offset-width) var(--tw-ring-offset-color); --tw-ring-shadow: var(--tw-ring-inset) 0 0 0 calc(2px + var(--tw-ring-offset-width)) var(--tw-ring-color); box-shadow: var(--tw-ring-offset-shadow), var(--tw-ring-shadow), var(--tw-shadow, 0 0 #0000); }
+    .btn-primary { color: #ffffff; background-color: #2563eb; --tw-ring-color: #60a5fa;} .btn-primary:hover { background-color: #1d4ed8;} .btn-primary:focus { --tw-ring-offset-color: #bfdbfe;}
+    .btn-secondary { color: #374151; background-color: #ffffff; border-color: #d1d5db;} .btn-secondary:hover { background-color: #f9fafb;} .btn-secondary:focus { --tw-ring-color: #4f46e5; border-color: #a5b4fc;}
+    .btn-danger-text { color: #dc2626; background: none; border: none; padding: 0; font-weight: 500; font-size: 0.875rem;} .btn-danger-text:hover { color: #b91c1c; text-decoration-line: underline; } .btn-danger-text:focus { outline: none; text-decoration: underline; }
+    .btn-info-text { color: #4f46e5; background: none; border: none; padding: 0; font-weight: 500; font-size: 0.875rem;} .btn-info-text:hover { color: #3730a3; text-decoration-line: underline; } .btn-info-text:focus { outline: none; text-decoration: underline; }
+
+    /* Hide/Show modal fields based on parent class (Unchanged) */
+     #fee-modal .add-mode-field,
+     #fee-modal .edit-mode-field {
+         display: none;
+     }
+     #fee-modal.add-mode .add-mode-field {
+         display: block;
+     }
+     #fee-modal.edit-mode .edit-mode-field {
+         display: block; /* Controls empty div, effectively hidden */
+     }
+     #fee-modal.edit-mode .add-mode-field {
+         display: none;
+     }
+
+     /* Error border styling (Unchanged) */
+    .border-red-500 { border-color: #ef4444 !important; }
+
+</style>
+{% endblock %}
+
+{% block content %}
+<div id="fee-manager-wrapper">
+    {# Filters/Search Area (Unchanged) #}
+    <div class="mb-6 bg-white p-4 rounded-lg shadow border border-gray-200">
+        <form method="get" action="{{ request.url_for('admin_manage_fees_list') }}" class="grid grid-cols-1 md:grid-cols-3 gap-4 items-end">
+             <div>
+                <label for="filter_status" class="block text-sm font-medium text-gray-700 mb-1">Filter by Status:</label>
+                <select name="filter_status" id="filter_status" class="form-select">
+                    <option value="">All Statuses</option>
+                    {% for status_name in payment_statuses %} {# Use status NAMES passed from route #}
+                    <option value="{{ status_name }}" {% if current_filter_status == status_name %}selected{% endif %}>{{ status_name.replace('_', ' ') | title }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="flex space-x-2">
+                <button type="submit" class="btn btn-primary">Filter</button>
+                <a href="{{ request.url_for('admin_manage_fees_list') }}" class="btn btn-secondary">Clear</a>
+            </div>
+        </form>
+    </div>
+
+    {# Header & Add Button (Unchanged) #}
+    <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 gap-4">
+        <h2 class="text-2xl font-semibold text-gray-800">Fee Records</h2>
+        <button id="add-fee-btn" class="btn btn-primary whitespace-nowrap">
+           Add Fee Record
+        </button>
+    </div>
+
+    {# Toast Container (Unchanged) #}
+    <div id="toast-container"></div>
+
+    {# Fee Records Table #}
+    <div class="bg-white p-4 md:p-6 rounded-lg shadow overflow-x-auto">
+        <table class="min-w-full divide-y divide-gray-200">
+            <thead class="bg-gray-50">
+                <tr>
+                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">ID</th>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Student</th>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Description</th>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Due Date</th>
+                    <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Amount Due</th>
+                    <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Amount Paid</th>
+                    <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Balance</th>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Payment Date</th>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+                </tr>
+            </thead>
+            <tbody id="fee-table-body" class="bg-white divide-y divide-gray-200"> {# ID needed for JS #}
+                 {% if fee_records %}
+                     {% for record in fee_records %}
+                     {% set amount_due = record.amount | default(0.0, true) %}
+                     {% set amount_paid = record.amount_paid | default(0.0, true) %}
+                     {% set balance = record.balance %}
+                     {# No longer need to set PAID/CANCELLED etc. here #}
+                     <tr>
+                         <td class="px-4 py-4 whitespace-nowrap text-sm text-gray-700">{{ record.id }}</td>
+                         <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-800 font-medium">{{ record.student.name if record.student else 'N/A' }}</td>
+                         <td class="px-6 py-4 text-sm text-gray-700 max-w-xs truncate" title="{{ record.description | default('', true) }}">{{ record.description | default('N/A', true) }}</td>
+                         <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{{ record.date.strftime('%Y-%m-%d') if record.date else 'N/A' }}</td>
+                         <td class="px-6 py-4 whitespace-nowrap text-sm text-right text-gray-700">{{ "%.2f"|format(amount_due) }}</td>
+                         <td class="px-6 py-4 whitespace-nowrap text-sm text-right text-gray-700">{{ "%.2f"|format(amount_paid) }}</td>
+                         {# NOTE: Balance display logic might need adjustment if CANCELLED records should show 0 balance #}
+                         <td class="px-6 py-4 whitespace-nowrap text-sm text-right {% if record.status and record.status.name != 'CANCELLED' and balance > 0 %}text-red-600 font-medium{% elif record.status and record.status.name != 'CANCELLED' and balance <= 0 and amount_due > 0 %}text-green-600{% else %}text-gray-500{% endif %}">{{ "%.2f"|format(balance) }}</td>
+                         <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{{ record.payment_date.strftime('%Y-%m-%d') if record.payment_date else 'N/A' }}</td>
+                         <td class="px-6 py-4 whitespace-nowrap text-sm">
+                             {# Status display logic remains the same, using status.value #}
+                             <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full
+                                {% if record.status and record.status.name == 'PAID' %} bg-green-100 text-green-800
+                                {% elif record.status and record.status.name == 'PENDING' %} bg-yellow-100 text-yellow-800
+                                {% elif record.status and record.status.name == 'PARTIALLY_PAID' %} bg-blue-100 text-blue-800
+                                {% elif record.status and record.status.name == 'OVERDUE' %} bg-red-100 text-red-800
+                                {% elif record.status and record.status.name == 'CANCELLED' %} bg-gray-100 text-gray-500 line-through
+                                {% else %} bg-gray-100 text-gray-800 {% endif %}">
+                                {{ record.status.value.replace('_', ' ') | title if record.status else 'N/A' }}
+                             </span>
+                         </td>
+                         {# CORRECTED ACTION CELL #}
+                         <td class="px-6 py-4 whitespace-nowrap text-sm font-medium space-x-3">
+                            {# --- Edit Details Button (Conditional based on status NAME) --- #}
+                            {# Show Edit button ONLY if status exists and name is NOT 'PAID' and NOT 'CANCELLED' #}
+                            {% if record.status and record.status.name != 'PAID' %}
+                                <button type="button" class="edit-fee-btn btn-info-text"
+                                        data-fee-id="{{ record.id }}"
+                                        data-description="{{ record.description | default('', true) | e }}"
+                                        data-amount-due="{{ amount_due }}"
+                                        data-due-date="{{ record.date.isoformat() if record.date else '' }}"
+                                        >
+                                    Edit Details
+                                </button>
+                            {% endif %} {# End of conditional Edit button #}
+
+                            {# --- Delete Form (Always Visible - adjust if needed) --- #}
+                            <form action="{{ url_for('admin_manage_fee_delete', payment_id=record.id) }}" method="post" class="inline delete-fee-form">
+                                 <button type="submit" class="btn-danger-text">Delete</button>
+                            </form>
+                         </td>
+                         {# END CORRECTED ACTION CELL #}
+                     </tr>
+                     {% endfor %}
+                 {% else %}
+                     <tr><td colspan="10" class="text-center py-4 text-gray-500">No fee records found matching criteria.</td></tr>
+                 {% endif %}
+            </tbody>
+        </table>
+    </div>
+
+    {# Fee Modal Structure (Unchanged) #}
+    <div id="fee-modal" class="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-0 hidden" aria-labelledby="modal-title" role="dialog" aria-modal="true">
+         <div id="modal-overlay" class="fixed inset-0 bg-black/50 backdrop-blur-sm" aria-hidden="true"></div>
+         <div id="modal-dialog" class="relative w-full max-w-xl overflow-hidden rounded-lg bg-white p-6 shadow-xl sm:my-8 sm:w-full sm:max-w-xl transform transition-all">
+             <div class="flex items-center justify-between pb-3 border-b border-gray-200">
+                 <h3 id="modal-title" class="text-lg font-semibold leading-6 text-gray-900">Modal Title</h3>
+                 <button id="modal-close-btn" type="button" class="p-1 rounded-full text-gray-400 hover:bg-gray-200 hover:text-gray-600 focus:outline-none focus:ring-2 focus:ring-indigo-500"> <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" aria-hidden="true"> <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" /> </svg> </button>
+             </div>
+             <div class="mt-5">
+                 <div id="modal-error-area" class="hidden p-3 mb-4 text-sm text-red-700 bg-red-100 rounded-lg border border-red-300" role="alert"></div>
+                 <form id="modal-form" action="#" method="post" class="space-y-4">
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        {# Fields for ADD mode ONLY #}
+                        <div class="add-mode-field">
+                            <label for="modal-student-select" class="block text-sm font-medium text-gray-700 mb-1">Student:</label>
+                            <select id="modal-student-select" name="student_id_str" class="form-select"> <option value="">-- Select Student --</option> </select> {# Required set via JS #}
+                        </div>
+
+                        {# Fields for BOTH Add and Edit #}
+                        <div class="md:col-span-2">
+                             <label for="modal-description" class="block text-sm font-medium text-gray-700 mb-1">Description:</label>
+                             <input type="text" id="modal-description" name="description" class="form-input">
+                        </div>
+                        <div>
+                            <label for="modal-amount-due" class="block text-sm font-medium text-gray-700 mb-1">Amount Due:</label>
+                            <input type="number" id="modal-amount-due" name="amount_str" min="0.01" step="0.01" class="form-input"> {# Required set via JS #}
+                        </div>
+                        <div>
+                            <label for="modal-due-date" class="block text-sm font-medium text-gray-700 mb-1">Due Date:</label>
+                            <input type="date" id="modal-due-date" name="due_date_str" class="form-input"> {# Required set via JS #}
+                        </div>
+
+                        {# Field for EDIT mode ONLY - Empty #}
+                         <div class="edit-mode-field md:col-span-2">
+                            {# Content removed #}
+                         </div>
+                    </div>
+                    <div class="flex justify-end space-x-3 pt-4 border-t border-gray-200 mt-6">
+                        <button id="modal-cancel-btn" type="button" class="btn btn-secondary"> Cancel </button>
+                        <button id="modal-submit-btn" type="submit" class="btn btn-primary"> Submit </button>
+                    </div>
+                 </form>
+             </div>
+         </div>
+    </div>
+</div>
+
+<script>
+    // JS for Admin Fee Modal (Add Demand / Edit Details)
+    // (Unchanged from previous version - status fields were already removed from JS)
+    try {
+        document.addEventListener('DOMContentLoaded', () => {
+            console.log("DOM loaded. Initializing Admin Fee Manager...");
+
+            const elements = {
+                modal: document.getElementById('fee-modal'),
+                overlay: document.getElementById('modal-overlay'),
+                dialog: document.getElementById('modal-dialog'),
+                modalTitle: document.getElementById('modal-title'),
+                modalForm: document.getElementById('modal-form'),
+                studentSelect: document.getElementById('modal-student-select'),
+                descriptionInput: document.getElementById('modal-description'),
+                amountDueInput: document.getElementById('modal-amount-due'),
+                dueDateInput: document.getElementById('modal-due-date'),
+                errorArea: document.getElementById('modal-error-area'),
+                submitBtn: document.getElementById('modal-submit-btn'),
+                closeBtn: document.getElementById('modal-close-btn'),
+                cancelBtn: document.getElementById('modal-cancel-btn'),
+                addBtn: document.getElementById('add-fee-btn'),
+                tableBody: document.getElementById('fee-table-body'),
+                toastContainer: document.getElementById('toast-container')
+            };
+
+            if (!elements.modal || !elements.modalForm || !elements.addBtn || !elements.tableBody) {
+                 console.error("Admin Fee Modal Init Error! Missing essential elements.");
+                 return;
+            }
+            console.log("Essential fee elements found.");
+
+            let students = [];
+            try {
+                students = {{ students_json | safe }};
+            } catch(e) {
+                console.error("Error parsing students JSON:", e);
+            }
+
+             function populateSelect(selectElement, data, valueField, textField, placeholder) {
+                if (!selectElement || !Array.isArray(data)) return;
+                selectElement.innerHTML = `<option value="">${placeholder || '-- Select --'}</option>`;
+                data.forEach(item => {
+                    const option = document.createElement('option');
+                    option.value = item[valueField];
+                    option.textContent = item[textField];
+                    selectElement.appendChild(option);
+                });
+             }
+             populateSelect(elements.studentSelect, students, 'id', 'name', '-- Select Student --');
+
+            const showToast = (message, type = 'info', duration = 4000) => {
+                console.log(`Toast (${type}, ${duration}ms): ${message}`);
+                if(elements.toastContainer && message) {
+                    const toast = document.createElement('div');
+                    toast.className = `toast ${type === 'error' ? 'toast-error' : 'toast-success'} show`;
+                    toast.textContent = message;
+                    elements.toastContainer.appendChild(toast);
+                    setTimeout(() => toast.remove(), duration);
+                }
+            };
+
+            let currentMode = 'add'; let editId = null;
+
+            const resetForm = () => {
+                if (elements.modalForm) elements.modalForm.reset();
+                if (elements.studentSelect) elements.studentSelect.selectedIndex = 0;
+                if (elements.errorArea) { elements.errorArea.classList.add('hidden'); elements.errorArea.textContent = ''; }
+                document.querySelectorAll(`#${elements.modalForm.id} .border-red-500`).forEach(el => el.classList.remove('border-red-500'));
+            };
+
+            const closeModal = () => {
+                 if(elements.modal) {
+                    elements.modal.classList.add('hidden');
+                    elements.modal.classList.remove('add-mode', 'edit-mode');
+                    resetForm();
+                 }
+            };
+
+            const openModal = (mode, feeData = null) => {
+                 if (!elements.modal || !elements.modalForm || !elements.modalTitle || !elements.submitBtn) {
+                    console.error("Cannot open modal, essential elements missing.");
+                    return;
+                 }
+                 console.log("Opening fee modal. Mode:", mode, "Data:", feeData);
+                 currentMode = mode;
+                 resetForm();
+                 elements.modal.classList.remove('add-mode', 'edit-mode');
+                 elements.modal.classList.add(`${mode}-mode`);
+
+                 if (mode === 'add') {
+                     editId = null;
+                     elements.modalTitle.textContent = 'Add Fee Record';
+                     elements.modalForm.action = `{{ url_for('admin_manage_fee_add') }}`;
+                     elements.submitBtn.textContent = 'Add Record';
+                     if(elements.studentSelect) elements.studentSelect.required = true;
+                     if(elements.amountDueInput) elements.amountDueInput.required = true;
+                     if(elements.dueDateInput) elements.dueDateInput.required = true;
+
+                 } else if (mode === 'edit' && feeData && feeData.id) {
+                     editId = feeData.id;
+                     elements.modalTitle.textContent = `Edit Fee Details (ID: ${editId})`;
+                     elements.modalForm.action = `{{ url_for('admin_manage_fees_list') }}${editId}/edit`;
+                     if(elements.descriptionInput) elements.descriptionInput.value = feeData.description || '';
+                     if(elements.amountDueInput) elements.amountDueInput.value = feeData.amountDue || '';
+                     if(elements.dueDateInput) elements.dueDateInput.value = feeData.dueDate || '';
+                     elements.submitBtn.textContent = 'Update Details';
+                     if(elements.studentSelect) elements.studentSelect.required = false;
+                     if(elements.amountDueInput) elements.amountDueInput.required = true;
+                     if(elements.dueDateInput) elements.dueDateInput.required = true;
+
+                 } else {
+                    console.error("Invalid modal state requested. Mode:", mode, "FeeData:", feeData);
+                    closeModal();
+                    return;
+                 }
+                 elements.modal.classList.remove('hidden');
+            };
+
+             const handleDelete = (formElement) => {
+                 if (!formElement || !formElement.action) return;
+                 const url = formElement.action;
+                 fetch(url, { method: 'POST', headers: { 'Accept': 'application/json' }})
+                 .then(response => response.ok ? response.json() : response.json().then(err => Promise.reject(err)))
+                 .then(data => {
+                     if (data.success) {
+                         showToast(data.message || 'Record deleted.', 'success');
+                         formElement.closest('tr')?.remove();
+                     } else {
+                         showToast(data.message || 'Failed to delete.', 'error');
+                     }
+                 })
+                 .catch(error => {
+                    console.error("Delete Error:", error);
+                    showToast(`Error: ${error.message || 'Could not delete record.'}`, 'error');
+                 });
+             };
+
+            if(elements.addBtn) elements.addBtn.addEventListener('click', () => openModal('add'));
+
+            if(elements.tableBody) {
+                 elements.tableBody.addEventListener('click', (event) => {
+                     const editButton = event.target.closest('.edit-fee-btn');
+                     const deleteForm = event.target.closest('.delete-fee-form');
+
+                     if (editButton) {
+                         event.preventDefault();
+                         const data = {
+                             id: editButton.dataset.feeId,
+                             description: editButton.dataset.description,
+                             amountDue: editButton.dataset.amountDue,
+                             dueDate: editButton.dataset.dueDate
+                         };
+                         if (!data.id) { console.error("Missing fee ID on edit button dataset."); return; }
+                         openModal('edit', data);
+                     } else if (deleteForm && event.target.tagName === 'BUTTON') {
+                          event.preventDefault();
+                          if(confirm('Are you sure you want to delete this fee record?')) {
+                             handleDelete(deleteForm);
+                          }
+                     }
+                 });
+            }
+
+            if(elements.overlay) elements.overlay.addEventListener('click', closeModal);
+            if(elements.closeBtn) elements.closeBtn.addEventListener('click', closeModal);
+            if(elements.cancelBtn) elements.cancelBtn.addEventListener('click', closeModal);
+            if(elements.dialog) elements.dialog.addEventListener('click', (event) => { event.stopPropagation(); });
+            window.addEventListener('keydown', (event) => { if (elements.modal && !elements.modal.classList.contains('hidden') && event.key === 'Escape') { closeModal(); }});
+
+             if(elements.modalForm) {
+                 elements.modalForm.addEventListener('submit', (event) => {
+                    let isValid = true; let errorMsg = "";
+                    if(elements.errorArea) elements.errorArea.classList.add('hidden');
+                    document.querySelectorAll(`#${elements.modalForm.id} .border-red-500`).forEach(el => el.classList.remove('border-red-500'));
+
+                    if(currentMode === 'add' && (!elements.studentSelect || !elements.studentSelect.value)) {
+                         isValid = false;
+                         errorMsg += "Student is required.\n";
+                         if(elements.studentSelect) elements.studentSelect.classList.add('border-red-500');
+                    }
+                    if(!elements.amountDueInput || !elements.amountDueInput.value || parseFloat(elements.amountDueInput.value) <= 0) {
+                         isValid = false;
+                         errorMsg += "Amount due must be positive.\n";
+                         if(elements.amountDueInput) elements.amountDueInput.classList.add('border-red-500');
+                    }
+                    if(!elements.dueDateInput || !elements.dueDateInput.value) {
+                         isValid = false;
+                         errorMsg += "Due date is required.\n";
+                         if(elements.dueDateInput) elements.dueDateInput.classList.add('border-red-500');
+                    }
+
+                    if (!isValid) {
+                        event.preventDefault();
+                        if(elements.errorArea){
+                            elements.errorArea.textContent = errorMsg.trim();
+                            elements.errorArea.classList.remove('hidden');
+                        }
+                        console.warn("Client validation failed.");
+                    } else {
+                        console.log("Client validation passed.");
+                    }
+                 });
+             }
+
+            const showInitialToasts = () => {
+                const urlParams = new URLSearchParams(window.location.search);
+                const toastError = urlParams.get('toast_error');
+                const toastSuccess = urlParams.get('toast_success');
+                if (toastError) {
+                    showToast(decodeURIComponent(toastError), 'error');
+                    history.replaceState(null, '', window.location.pathname + window.location.hash);
+                }
+                if (toastSuccess) {
+                    showToast(decodeURIComponent(toastSuccess), 'success');
+                    history.replaceState(null, '', window.location.pathname + window.location.hash);
+                }
+            };
+            showInitialToasts();
+
+            console.log("Admin Fee Manager Initialized.");
+        }); // End DOMContentLoaded
+    } catch(globalError) {
+        console.error("Global JS Error in Admin Fee Manager:", globalError);
+         const errorDiv = document.getElementById('fee-manager-wrapper');
+         if (errorDiv) {
+             errorDiv.insertAdjacentHTML('afterbegin', '<p style="color: red; font-weight: bold; text-align: center; padding: 1rem;">Error initializing page scripts. Functionality may be limited.</p>');
+         }
+    }
+</script>
+{% endblock %}

@@ -1,0 +1,147 @@
+{% extends "layout.html" %}
+{% block title %}My Schedule{% endblock %}
+{% block page_title %}My Class Schedule{% endblock %}
+
+{% block head_extra %}
+<style>
+    /* --- Styles for Read-Only Timetable --- */
+    .timetable-cell { min-height: 80px; position: relative; } /* Slightly shorter might be ok */
+    .schedule-entry-readonly {
+        /* No cursor pointer */
+        transition: background-color 0.1s ease-in-out;
+        box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+        margin-bottom: 3px;
+        overflow: hidden;
+        border-radius: 0.25rem;
+        border: 1px solid #93c5fd; /* Lighter blue border */
+        background-color: #f0f9ff; /* Very light blue background */
+        padding: 0.375rem; /* p-1.5 */
+    }
+     /* Sticky Headers */
+     #timetable-grid > div:first-child > div { position: sticky; top: 0; z-index: 20; background-color: #e5e7eb; }
+     #timetable-grid > div > div:first-child { position: sticky; left: 0; z-index: 10; background-color: #f3f4f6; }
+     #timetable-grid > div:first-child > div:first-child { z-index: 30; background-color: #e5e7eb;}
+</style>
+{% endblock %}
+
+{% block content %}
+<div id="schedule-viewer-wrapper">
+
+    {# Optional: Add filters later if needed (e.g., week view) #}
+    <div class="mb-6">
+        <h2 class="text-2xl font-semibold text-gray-800">Weekly Schedule</h2>
+    </div>
+
+    {# Timetable Grid Container #}
+    <div class="bg-white rounded-lg shadow overflow-x-auto">
+        <div id="timetable-grid" class="min-w-[850px] md:min-w-full">
+            {# Grid populated by JavaScript #}
+            <p id="timetable-loading" class="p-4 text-center text-gray-500">Loading schedule...</p>
+        </div>
+    </div>
+
+    {# No Modal Needed #}
+
+</div> {# End wrapper div #}
+
+{# Plain JavaScript Logic for Grid Building Only #}
+<script>
+    try {
+        document.addEventListener('DOMContentLoaded', () => {
+            console.log("DOM loaded. Initializing Student Schedule Viewer...");
+
+            // --- Elements Needed ---
+            const gridContainer = document.getElementById('timetable-grid');
+            if (!gridContainer) {
+                 console.error("Initialization Error: Timetable grid container (#timetable-grid) not found.");
+                 // Display error directly if possible
+                 document.body.insertAdjacentHTML('afterbegin', '<p style="color: red; background: yellow; padding: 1rem;">Error: Timetable container missing!</p>');
+                 return;
+            }
+            console.log("Grid container found.");
+
+            // --- Data Initialization ---
+            let schedules = []; // Initialize as empty array
+            try {
+                schedules = {{ schedules_json | safe }};
+                if (!Array.isArray(schedules)) { throw new Error("Schedules data from backend is not a valid array."); }
+                console.log("Schedule data parsed successfully. Count:", schedules.length);
+            } catch (e) {
+                console.error("Error parsing schedule data from backend:", e);
+                gridContainer.innerHTML = '<p class="text-red-600 p-4 text-center">Error loading schedule data.</p>';
+                return; // Stop if data is bad
+            }
+
+            // --- Configuration ---
+            const daysOfWeek = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"]; // Match backend/admin view
+            const gridTimeSlots = []; // Hourly slots for grid display
+            for (let hour = 7; hour < 20; hour++) { gridTimeSlots.push(`${String(hour).padStart(2, '0')}:00`); }
+
+            // --- Prepare Lookup Table ---
+            const schedulesLookup = {};
+            daysOfWeek.forEach(day => {
+                schedulesLookup[day] = {};
+                gridTimeSlots.forEach(time => { schedulesLookup[day][time] = []; });
+            });
+            schedules.forEach(schedule => {
+                const gridStartTimeKey = schedule.start_time ? `${schedule.start_time.substring(0,2)}:00` : null;
+                if (schedule.day_of_week && daysOfWeek.includes(schedule.day_of_week) && gridStartTimeKey && schedulesLookup[schedule.day_of_week]?.[gridStartTimeKey]) {
+                    schedulesLookup[schedule.day_of_week][gridStartTimeKey].push(schedule);
+                } else {
+                    if(schedule.day_of_week && gridStartTimeKey) { console.warn(`Schedule entry ignored (day/time mismatch): Day ${schedule.day_of_week}, Start ${schedule.start_time}`); }
+                }
+            });
+
+            // --- Build Timetable Grid HTML ---
+            function buildTimetable() {
+                console.log("Building student timetable grid...");
+                try {
+                    let gridHtml = `<div class="grid grid-cols-${daysOfWeek.length + 1} gap-px border border-gray-300 bg-gray-300">`;
+                    // Header Row
+                    gridHtml += `<div class="bg-gray-200 p-2 text-sm font-semibold text-center text-gray-600 sticky top-0 z-10">Time</div>`;
+                    daysOfWeek.forEach(day => { gridHtml += `<div class="bg-gray-200 p-2 text-sm font-semibold text-center text-gray-600 sticky top-0 z-10">${day}</div>`; });
+
+                    // Time Slot Rows
+                    gridTimeSlots.forEach(time => {
+                        gridHtml += `<div class="bg-gray-100 p-2 text-xs font-medium text-center text-gray-500 flex items-center justify-center timetable-cell">${time}</div>`;
+                        daysOfWeek.forEach(day => {
+                            gridHtml += `<div class="timetable-cell bg-white p-1 border-t border-l border-gray-200 relative overflow-y-auto" data-day="${day}" data-time="${time}">`;
+                            const entries = schedulesLookup[day]?.[time] || [];
+                             if (entries.length > 0) {
+                                entries.forEach(entry => {
+                                    // Read-Only Entry Block - No data attributes needed for editing
+                                     gridHtml += `
+                                        <div class="schedule-entry-readonly border border-blue-200 rounded p-1.5 text-xs mb-1"> {# Changed class #}
+                                             <p class="font-semibold text-blue-900 text-[11px] leading-tight truncate" title="${entry.course_name || ''}">${entry.course_name || 'N/A'}</p>
+                                             <p class="text-gray-700 text-[10px] leading-tight truncate" title="${entry.instructor_name || ''}">${entry.instructor_name || 'N/A'}</p>
+                                             <p class="text-gray-600 text-[10px] leading-tight truncate" title="${entry.classroom_location || ''}">${entry.classroom_location || 'N/A'}</p>
+                                             <p class="text-gray-500 text-[9px] leading-tight">${entry.start_time || '?'} - ${entry.end_time || '?'}</p>
+                                         </div>`;
+                                });
+                             } else {
+                                 // Optional: Render an empty placeholder or leave blank
+                                 // gridHtml += `<div class="h-full w-full"></div>`;
+                             }
+                             gridHtml += `</div>`; // Close cell div
+                        });
+                    });
+                    gridHtml += `</div>`; // Close grid div
+                    gridContainer.innerHTML = gridHtml; // Update the DOM
+                    console.log("Student timetable grid built successfully.");
+                } catch (error) {
+                    console.error("Error building student timetable HTML:", error);
+                    gridContainer.innerHTML = '<p class="text-red-600 p-4 text-center">Error displaying schedule grid.</p>';
+                }
+            }
+            buildTimetable(); // CALL IT
+
+            console.log("Student Schedule Viewer Initialized.");
+
+        }); // End DOMContentLoaded
+    } catch(globalError) {
+        console.error("Global JavaScript Error:", globalError);
+        const gridContainer = document.getElementById('timetable-grid');
+        if (gridContainer) { gridContainer.innerHTML = '<p class="text-red-600 p-4 text-center font-bold">A critical error occurred loading this page.</p>'; }
+    }
+</script>
+{% endblock %}

@@ -1,0 +1,491 @@
+{% extends "layout.html" %}
+{% block title %}Edit MCQs: {{ exam.name }}{% endblock %}
+{% block page_title %}Edit MCQs: <span class="text-blue-700">{{ exam.name }}</span>{% endblock %}
+
+{% block head_extra %}
+<style>
+    /* Basic styles for question blocks and options */
+    .mcq-block { border: 1px solid #e5e7eb; border-radius: 0.375rem; padding: 1rem; margin-bottom: 1.5rem; background-color: white; box-shadow: 0 1px 2px 0 rgba(0,0,0,0.05); }
+    .mcq-option { display: flex; align-items: center; margin-bottom: 0.5rem; }
+    .mcq-option input[type='radio'], .mcq-option input[type='checkbox'] { margin-right: 0.5rem; width: 1rem; height: 1rem; /* Tailwind h-4 w-4 */ color: #4f46e5; border-color: #d1d5db; } /* Standard form styling */
+    .mcq-option input[type='text'] { flex-grow: 1; } /* Option text takes remaining space */
+    .delete-btn { color: #ef4444; } .delete-btn:hover { color: #dc2626; }
+
+    /* --- Keep Toast styles --- */
+    #toast-container { position: fixed; top: 1.5rem; right: 1.5rem; z-index: 100; display: flex; flex-direction: column; gap: 0.75rem; }
+    .toast { display: flex; align-items: center; padding: 0.75rem 1rem; border-radius: 0.5rem; box-shadow: 0 10px 15px -3px rgba(0,0,0,0.1), 0 4px 6px -2px rgba(0,0,0,0.05); border-width: 1px; min-width: 250px; max-width: 400px; opacity: 0; transform: translateX(100%); transition: opacity 0.3s ease-out, transform 0.3s ease-out; pointer-events: none; }
+    .toast.show { opacity: 1; transform: translateX(0); pointer-events: auto; }
+    .toast-success { background-color: #dcfce7; border-color: #4ade80; color: #166534; }
+    .toast-error { background-color: #fee2e2; border-color: #f87171; color: #991b1b; }
+    .toast-info { background-color: #e0f2fe; border-color: #60a5fa; color: #1e40af; }
+    .toast-icon { margin-right: 0.75rem; flex-shrink: 0; }
+    .toast-message { flex-grow: 1; font-size: 0.875rem; line-height: 1.25rem; word-break: break-word;}
+    .toast-close { margin-left: 1rem; background: transparent; border: none; color: inherit; opacity: 0.7; cursor: pointer; font-size: 1.2rem; line-height: 1;}
+    .toast-close:hover { opacity: 1; }
+
+    /* Standard input/select styling */
+    .form-input, .form-select, .form-textarea {
+        appearance: none; border-radius: 0.375rem; /* rounded-md */ position: relative; display: block; width: 100%;
+        padding-left: 0.75rem; padding-right: 0.75rem; /* px-3 */ padding-top: 0.5rem; padding-bottom: 0.5rem; /* py-2 */
+        border-width: 1px; border-color: #d1d5db; /* border-gray-300 */ --tw-shadow: 0 0 #0000; box-shadow: var(--tw-ring-offset-shadow, 0 0 #0000), var(--tw-ring-shadow, 0 0 #0000), var(--tw-shadow);
+        placeholder-color: #6b7280; /* placeholder-gray-500 */ color: #111827; /* text-gray-900 */
+    }
+     .form-input:focus, .form-select:focus, .form-textarea:focus {
+        outline: 2px solid transparent; outline-offset: 2px; z-index: 10;
+        --tw-ring-color: #3b82f6; border-color: #3b82f6; /* focus:ring-blue-500 focus:border-blue-500 */
+         --tw-ring-offset-shadow: var(--tw-ring-inset) 0 0 0 var(--tw-ring-offset-width) var(--tw-ring-offset-color);
+         --tw-ring-shadow: var(--tw-ring-inset) 0 0 0 calc(1px + var(--tw-ring-offset-width)) var(--tw-ring-color);
+    }
+     .form-select { background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%236b7280' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M6 8l4 4 4-4'/%3e%3c/svg%3e"); background-position: right 0.5rem center; background-repeat: no-repeat; background-size: 1.5em 1.5em; padding-right: 2.5rem; -webkit-print-color-adjust: exact; color-adjust: exact; }
+     .form-checkbox { height: 1rem; width: 1rem; color: #4f46e5; border-color: #d1d5db; border-radius: 0.25rem; /* rounded */ }
+     .form-checkbox:focus { --tw-ring-color: #4f46e5; /* focus:ring-indigo-500 */ }
+
+     /* Simple Button Styles */
+     .btn { display: inline-flex; align-items: center; justify-content: center; padding-left: 1rem; padding-right: 1rem; padding-top: 0.5rem; padding-bottom: 0.5rem; border-width: 1px; border-color: transparent; font-size: 0.875rem; line-height: 1.25rem; font-weight: 500; border-radius: 0.375rem; --tw-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05); box-shadow: var(--tw-ring-offset-shadow, 0 0 #0000), var(--tw-ring-shadow, 0 0 #0000), var(--tw-shadow); transition-property: color, background-color, border-color, text-decoration-color, fill, stroke; transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1); transition-duration: 150ms; }
+     .btn:focus { outline: 2px solid transparent; outline-offset: 2px; --tw-ring-offset-shadow: var(--tw-ring-inset) 0 0 0 var(--tw-ring-offset-width) var(--tw-ring-offset-color); --tw-ring-shadow: var(--tw-ring-inset) 0 0 0 calc(2px + var(--tw-ring-offset-width)) var(--tw-ring-color); box-shadow: var(--tw-ring-offset-shadow), var(--tw-ring-shadow), var(--tw-shadow, 0 0 #0000); }
+     .btn-primary { color: #ffffff; background-color: #2563eb; --tw-ring-color: #2563eb;} .btn-primary:hover { background-color: #1d4ed8;} .btn-primary:focus { --tw-ring-offset-color: #ffffff;}
+     .btn-secondary { color: #374151; background-color: #ffffff; border-color: #d1d5db;} .btn-secondary:hover { background-color: #f9fafb;} .btn-secondary:focus { --tw-ring-color: #4f46e5;}
+     .btn-danger-text { color: #dc2626; } .btn-danger-text:hover { color: #b91c1c; text-decoration-line: underline; }
+
+</style>
+{% endblock %}
+
+{% block content %}
+<div id="mcq-editor-wrapper">
+     {# Link back #}
+     <div class="mb-4"> 
+        {% set back_url = "/instructor/exams?course_id=" ~ exam.course_id %} {# Construct manually #}
+        <a href="{{ back_url }}" class="text-sm text-blue-600 hover:underline">← Back to Exams for {{ exam.course.name if exam.course else 'Course' }}</a>    </div>
+
+     {# Toast Container #} <div id="toast-container"></div>
+
+     {# Exam Details #}
+     <div class="mb-6 bg-gray-50 p-4 rounded-lg border"> <h3 class="text-lg font-semibold text-gray-700 mb-2">Exam Details</h3> <dl class="grid grid-cols-1 sm:grid-cols-3 gap-x-4 gap-y-2 text-sm"> <!-- ... exam details dl ... --> </dl> </div>
+
+     <form id="mcq-form" method="post" action="{{ url_for('instructor_save_exam_mcqs', exam_id=exam.id) }}">
+         <div id="questions-container" class="space-y-6"> {# JS populates this #} </div>
+
+         {# Add Question Button #}
+         <div class="mt-6 border-t pt-6"> <button type="button" id="add-question-btn" class="inline-flex items-center px-4 py-2 border border-dashed border-gray-400 text-sm font-medium rounded-md shadow-sm text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"> <svg class="-ml-1 mr-2 h-5 w-5 text-gray-500" viewBox="0 0 20 20" fill="currentColor"> <path fill-rule="evenodd" d="M10 5a1 1 0 011 1v3h3a1 1 0 110 2h-3v3a1 1 0 11-2 0v-3H6a1 1 0 110-2h3V6a1 1 0 011-1z" clip-rule="evenodd" /> </svg> Add Question </button> </div>
+
+        {# Save Button #}
+         <div class="mt-8 py-4 border-t flex justify-end"> <button type="submit" class="inline-flex items-center px-6 py-3 border border-transparent text-base font-medium rounded-md shadow-sm text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"> Save All Questions & Update Marks </button> </div>
+     </form>
+</div>
+
+{# --- Templates --- #}
+<template id="mcq-question-template">
+    <div class="mcq-block border border-gray-200 p-4 mb-6 bg-white rounded shadow" data-index="__Q_INDEX__"> {# Reverted styling #}
+        <input type="hidden" name="q_id___Q_INDEX__" value="" class="question-id">
+        <input type="hidden" name="q_delete___Q_INDEX__" value="false" class="delete-flag">
+
+        <div class="flex justify-between items-start mb-3">
+             <div class="flex-grow mr-4">
+                <label for="q_text___Q_INDEX__" class="block text-sm font-medium text-gray-700">Question <span class="question-number font-semibold"></span> Text:</label>
+                <textarea id="q_text___Q_INDEX__" name="q_text___Q_INDEX__" rows="3" required class="mt-1 appearance-none rounded-md relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"></textarea>
+             </div>
+             <div class="flex-shrink-0 pt-5">
+                 <button type="button" class="remove-question-btn delete-btn text-sm" title="Remove question"> <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z" clip-rule="evenodd"></path></svg> </button>
+             </div>
+        </div>
+        <div class="grid grid-cols-1 sm:grid-cols-3 gap-x-4 items-center mb-3">
+             <div class="sm:col-span-1">
+                 <label for="q_marks___Q_INDEX__" class="block text-sm font-medium text-gray-700">Marks:</label>
+                 <input type="number" id="q_marks___Q_INDEX__" name="q_marks___Q_INDEX__" value="1.0" min="0.5" step="0.5" required class="mt-1 appearance-none rounded-md relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm">
+             </div>
+        </div>
+         <div class="options-container space-y-2 mt-3 border-t border-gray-200 pt-3">
+            <label class="block text-sm font-semibold text-gray-800 mb-2">Options (Select ONE correct answer):</label>
+         </div>
+         <div class="mt-3">
+             <button type="button" class="add-option-btn text-sm text-blue-600 hover:text-blue-800 hover:underline focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-1 rounded px-1 py-0.5"> + Add Option </button>
+         </div>
+    </div>
+</template>
+
+<template id="mcq-option-template">
+     <div class="mcq-option"> {# Removed extra styling #}
+         <input type="radio" id="q___Q_INDEX___opt_correct___OPT_INDEX__" name="q___Q_INDEX___opt_correct" value="__OPT_INDEX__" class="correct-radio h-4 w-4 text-indigo-600 border-gray-300 focus:ring-indigo-500">
+         <input type="text" id="q___Q_INDEX___opt_text___OPT_INDEX__" name="q___Q_INDEX___opt_text___OPT_INDEX__" required placeholder="Option text..." class="ml-2 appearance-none rounded-md relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm">
+         <button type="button" class="remove-option-btn delete-btn text-xs ml-2 p-1 flex-shrink-0" title="Remove option"> <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd"></path></svg> </button>
+     </div>
+</template>
+
+{# Keep the rest of your edit_exam_mcqs.html file exactly as it was in the working version before the last change #}
+{# Place this script block at the end, inside {% block scripts_extra %} or just before </body> #}
+<script>
+    // Wrap entire script logic in a try-catch for overall safety
+    try {
+        document.addEventListener('DOMContentLoaded', () => {
+            console.log("MCQ Editor Initializing...");
+
+            // --- Get Elements (Ensure IDs match HTML exactly) ---
+            const elements = {
+                questionsContainer: document.getElementById('questions-container'),
+                addQuestionBtn: document.getElementById('add-question-btn'),
+                questionTemplate: document.getElementById('mcq-question-template'),
+                optionTemplate: document.getElementById('mcq-option-template'),
+                mcqForm: document.getElementById('mcq-form'),
+                toastContainer: document.getElementById('toast-container')
+                // Add other elements if needed by helper functions
+            };
+
+            // --- Robust Element Check ---
+            let allElementsFound = true;
+            // Check critical elements needed for the script to function at all
+            const criticalIds = ['questions-container', 'add-question-btn', 'mcq-question-template', 'mcq-option-template', 'mcq-form', 'toast-container'];
+            criticalIds.forEach(id => {
+                if (!document.getElementById(id)) {
+                    console.error(`MCQ Init Error: Critical element '#${id}' not found.`);
+                    allElementsFound = false;
+                }
+            });
+             // Also check elements retrieved into the object
+             for (const [key, value] of Object.entries(elements)) {
+                if (!value) {
+                    console.warn(`MCQ Init Warning: Element expected for key '${key}' might be missing (check ID).`);
+                    // Note: Not setting allElementsFound to false here unless it's one of the critical IDs checked above
+                }
+             }
+
+            if (!allElementsFound) {
+                const wrapper = document.getElementById('mcq-editor-wrapper') || document.body;
+                wrapper.insertAdjacentHTML('afterbegin', '<p class="text-red-600 p-4 text-center font-bold border border-red-300 bg-red-100 rounded">Error initializing MCQ editor: Required page elements are missing. Check console.</p>');
+                return; // Stop script execution
+            }
+            console.log("All required MCQ editor elements found.");
+
+
+            // --- Data Initialization ---
+            let existingQuestions = [];
+            try {
+                // Data passed from backend route context
+                existingQuestions = {{ questions | tojson | safe }};
+                if (!Array.isArray(existingQuestions)) throw new Error("Invalid questions data format.");
+                console.log("Existing questions data loaded:", existingQuestions.length);
+            } catch(e) {
+                console.error("Error parsing existing questions data:", e);
+                elements.questionsContainer.innerHTML = `<p class="text-red-500 p-4">Failed to load existing questions.</p>`;
+                // Allow script to continue so basic functions might work, but show error
+                 // return; // Optionally stop execution
+            }
+
+            // Counters for unique indices/names for NEW elements
+            let questionIndexCounter = existingQuestions.length; // Start after existing ones
+            let optionIndexCounter = Date.now(); // Use timestamp + random for more uniqueness
+
+            // --- Toast Function ---
+            const showToast = (message, type = 'info', duration = 4000) => {
+                if (!elements.toastContainer) { console.warn("Toast container missing!"); return };
+                const toastId = `toast-${Date.now()}`;
+                const toast = document.createElement('div');
+                toast.id = toastId;
+                toast.className = `toast toast-${type}`;
+                let iconSvg = ''; /* ... icon svg definitions ... */
+                if (type === 'success') iconSvg = '<svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"></path></svg>';
+                else if (type === 'error') iconSvg = '<svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd"></path></svg>';
+                else iconSvg = '<svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd"></path></svg>';
+                toast.innerHTML = `<span class="toast-icon">${iconSvg}</span> <span class="toast-message">${message}</span> <button type="button" class="toast-close" aria-label="Close">×</button>`;
+                elements.toastContainer.appendChild(toast);
+                requestAnimationFrame(() => { requestAnimationFrame(() => { toast.classList.add('show'); }); });
+                const timer = setTimeout(() => { if(toast) { toast.classList.remove('show'); toast.addEventListener('transitionend', () => toast.remove(), { once: true }); } }, duration);
+                toast.querySelector('.toast-close')?.addEventListener('click', () => { clearTimeout(timer); if(toast) { toast.classList.remove('show'); toast.addEventListener('transitionend', () => toast.remove(), { once: true }); } });
+            };
+
+
+            // --- Helper: Renumber Question Labels ---
+            const renumberQuestions = () => {
+                if (!elements.questionsContainer) return;
+                // Select only blocks that are direct children and not marked for deletion
+                const questionBlocks = Array.from(elements.questionsContainer.children)
+                                            .filter(el => el.classList.contains('mcq-block') && !el.classList.contains('marked-for-delete'));
+
+                console.log(`Renumbering ${questionBlocks.length} visible questions.`);
+                questionBlocks.forEach((block, index) => {
+                    const numberSpan = block.querySelector('.question-number');
+                    if (numberSpan) { numberSpan.textContent = `#${index + 1}`; }
+                });
+            };
+
+
+            // --- Helper: Add Option Row ---
+            const addOption = (qIndex, optionsContainer, optionData = null) => {
+                if (!elements.optionTemplate || !optionsContainer) { console.error("Cannot add option: template or container missing."); return; }
+                optionIndexCounter++;
+                const optIndex = `dyn_${optionIndexCounter}`; // Unique index for new options
+
+                try {
+                    const templateNode = elements.optionTemplate.content.cloneNode(true);
+                    const optionDiv = templateNode.querySelector('.mcq-option');
+                    const radio = templateNode.querySelector('.correct-radio');
+                    const textInput = templateNode.querySelector('input[type="text"]');
+                    const removeBtn = templateNode.querySelector('.remove-option-btn');
+
+                    if(!optionDiv || !radio || !textInput || !removeBtn) { throw new Error("Option template structure incorrect."); }
+
+                    // Update IDs and names using Q_INDEX and unique OPT_INDEX
+                    radio.id = `q_${qIndex}_opt_correct_${optIndex}`;
+                    radio.name = `q_${qIndex}_opt_correct`; // Group radios
+                    radio.value = optIndex; // Value identifies this option index
+
+                    textInput.id = `q_${qIndex}_opt_text_${optIndex}`;
+                    textInput.name = `q_${qIndex}_opt_text_${optIndex}`;
+
+                    // Populate data if provided (for existing options)
+                    if (optionData) {
+                        textInput.value = optionData.text || '';
+                        if (optionData.is_correct) {
+                            radio.checked = true;
+                            console.log(`Setting correct answer for Q:${qIndex}, Opt Text:'${optionData.text}', OptIndex:${optIndex}`);
+                        }
+                    }
+
+                    // Add listener for remove button (Delegation is preferred, but direct listener as fallback)
+                    // This listener is now primarily handled by delegation on questionsContainer
+                    // removeBtn.addEventListener('click', (e) => { ... });
+
+                    optionsContainer.appendChild(optionDiv); // Append the prepared option
+                    console.log(`Added option dyn_${optIndex} to question ${qIndex}`);
+
+                } catch (error) { console.error("Error creating option element:", error); showToast("Error adding option.", "error");}
+            };
+
+
+            // --- Helper: Add Question Block ---
+            const addQuestion = (questionData = null) => {
+                if (!elements.questionTemplate || !elements.questionsContainer) return;
+                questionIndexCounter++;
+                const qIndex = questionData?.id ? String(questionData.id) : `new_${questionIndexCounter}`;
+                console.log(`Adding/Populating Question Block with index: ${qIndex}`);
+
+                try {
+                    const templateNode = elements.questionTemplate.content.cloneNode(true);
+                    const newQuestionBlock = templateNode.querySelector('.mcq-block');
+                    if (!newQuestionBlock) throw new Error("MCQ block not found in template.");
+
+                    newQuestionBlock.dataset.index = qIndex; // Store index
+
+                    // Update IDs/names within the cloned structure
+                    newQuestionBlock.querySelectorAll('[id*="__Q_INDEX__"], [name*="__Q_INDEX__"]').forEach(el => {
+                        if(el.id) el.id = el.id.replace('__Q_INDEX__', qIndex);
+                        if(el.name) el.name = el.name.replace('__Q_INDEX__', qIndex);
+                    });
+
+                    // Get references AFTER updating indices
+                    const idInput = newQuestionBlock.querySelector('.question-id');
+                    const textInput = newQuestionBlock.querySelector(`textarea[name="q_text_${qIndex}"]`);
+                    const marksInput = newQuestionBlock.querySelector(`input[name="q_marks_${qIndex}"]`);
+                    const optionsContainer = newQuestionBlock.querySelector('.options-container');
+                    const addOptionBtn = newQuestionBlock.querySelector('.add-option-btn');
+                    // const removeQuestionBtn = newQuestionBlock.querySelector('.remove-question-btn'); // Listener uses delegation
+                    const deleteFlagInput = newQuestionBlock.querySelector('.delete-flag');
+
+                    if (!idInput || !textInput || !marksInput || !optionsContainer || !addOptionBtn || !deleteFlagInput) { throw new Error("Missing inner element in question template."); }
+
+                    // Populate with existing data if provided
+                    if (questionData) {
+                        console.log(`Populating existing question ID: ${questionData.id}`);
+                        idInput.value = questionData.id || '';
+                        textInput.value = questionData.question_text || '';
+                        marksInput.value = questionData.marks || 1.0;
+                        // Clear placeholder label and add existing options
+                        optionsContainer.innerHTML = '<label class="block text-sm font-semibold text-gray-800 mb-2">Options (Select ONE correct answer):</label>';
+                        if (Array.isArray(questionData.options)) {
+                            questionData.options.forEach((opt) => { addOption(qIndex, optionsContainer, opt); });
+                            // Ensure minimum 2 options
+                            if(questionData.options.length < 2) addOption(qIndex, optionsContainer);
+                            if(questionData.options.length < 1) addOption(qIndex, optionsContainer);
+                        } else { // Add defaults if options missing/invalid
+                             addOption(qIndex, optionsContainer); addOption(qIndex, optionsContainer);
+                        }
+                    } else { // New question defaults
+                         console.log(`Adding new question block with index: ${qIndex}`);
+                         idInput.value = '';
+                         optionsContainer.innerHTML = '<label class="block text-sm font-semibold text-gray-800 mb-2">Options (Select ONE correct answer):</label>';
+                         addOption(qIndex, optionsContainer); addOption(qIndex, optionsContainer);
+                    }
+
+                    // Attach listener for "+ Add Option" button INSIDE this new block
+                    addOptionBtn.addEventListener('click', () => addOption(qIndex, optionsContainer));
+                    // Remove button listener handled by delegation
+
+                    elements.questionsContainer.appendChild(newQuestionBlock);
+
+                } catch (error) { console.error("Error adding question block:", error); showToast("Error adding question.", "error"); }
+            }; // End addQuestion
+
+
+            // --- Initial Population ---
+            elements.questionsContainer.innerHTML = ''; // Clear placeholder/previous
+            if(existingQuestions.length > 0) {
+                 console.log(`Populating ${existingQuestions.length} existing questions from backend.`);
+                 existingQuestions.forEach(q => addQuestion(q));
+            } else {
+                console.log("No existing questions found, adding one blank question.");
+                addQuestion(); // Add one empty question block if none exist
+            }
+            renumberQuestions(); // Initial numbering
+
+
+            // --- Event Listener for Global Add Question Button ---
+            if(elements.addQuestionBtn) {
+                elements.addQuestionBtn.addEventListener('click', () => {
+                     console.log("Global Add Question button clicked.");
+                     addQuestion(); // Add a new blank question block
+                     renumberQuestions(); // Renumber after adding
+                     elements.questionsContainer.lastElementChild?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                });
+            } else { console.warn("Add Question button not found."); }
+
+
+            // --- Event Delegation for Remove Buttons ---
+            if (elements.questionsContainer) {
+                elements.questionsContainer.addEventListener('click', (event) => {
+                    // Handle Remove Question
+                    const removeQuestionButton = event.target.closest('.remove-question-btn');
+                    if (removeQuestionButton) {
+                        event.stopPropagation(); // Prevent triggering other listeners if needed
+                        const questionBlock = removeQuestionButton.closest('.mcq-block');
+                        const deleteFlagInput = questionBlock?.querySelector('.delete-flag');
+                        if (questionBlock && deleteFlagInput) {
+                            if (confirm('Are you sure you want to remove this question and its options?')) {
+                                questionBlock.style.display = 'none';
+                                questionBlock.classList.add('marked-for-delete');
+                                deleteFlagInput.value = 'true';
+                                // Disable all inputs within this block
+                                questionBlock.querySelectorAll('input, textarea, select').forEach(el => { el.disabled = true; });
+                                console.log(`Marked question block index ${questionBlock.dataset.index} for deletion.`);
+                                renumberQuestions();
+                            }
+                        } else { console.warn("Could not find question block or delete flag for remove button."); }
+                        return; // Processed this click
+                    }
+
+                    // Handle Remove Option
+                    const removeOptionButton = event.target.closest('.remove-option-btn');
+                    if (removeOptionButton) {
+                         event.stopPropagation(); // Prevent triggering other listeners if needed
+                         const optionToRemove = removeOptionButton.closest('.mcq-option');
+                         const optionsContainer = optionToRemove?.parentElement;
+                         if (optionToRemove && optionsContainer) {
+                             const currentOptions = optionsContainer.querySelectorAll('.mcq-option');
+                             if (currentOptions.length <= 2) {
+                                 showToast("Questions must have at least two options.", "error");
+                                 return; // Prevent removing below minimum
+                             }
+                             optionToRemove.remove();
+                             console.log("Removed option.");
+                         } else { console.warn("Could not find option or container for remove button.") }
+                         return; // Processed this click
+                    }
+                });
+            } else { console.warn("Questions container not found for attaching delegation listener.") }
+
+
+            // --- Form Submission Validation ---
+            if(elements.mcqForm) {
+                elements.mcqForm.addEventListener('submit', (event) => {
+                    console.log("Validating MCQ Form before submission...");
+                    let formIsValid = true;
+                    let firstErrorElement = null;
+                    const errorMessages = []; // Collect specific errors
+
+                    // Reset previous errors visually
+                    if(elements.errorArea) elements.errorArea.classList.add('hidden');
+                    document.querySelectorAll(`#${elements.mcqForm.id} .border-red-500`).forEach(el => el.classList.remove('border-red-500'));
+                    document.querySelectorAll(`#${elements.mcqForm.id} .mcq-block`).forEach(qb => qb.style.borderColor='');
+                    document.querySelectorAll(`#${elements.mcqForm.id} .options-container`).forEach(oc => oc.style.border='');
+
+                    // IMPORTANT: Only validate VISIBLE blocks
+                    const questions = elements.questionsContainer.querySelectorAll('.mcq-block:not(.marked-for-delete)');
+                    console.log(`Validating ${questions.length} active questions.`);
+
+                    if (questions.length === 0) {
+                        // Allow submitting with zero questions IF user confirms explicitly
+                        if (!confirm("No active questions found. Submitting will remove any existing questions for this exam. Proceed?")) {
+                            event.preventDefault();
+                            return;
+                        }
+                    }
+
+                    questions.forEach((qBlock, qIdx) => {
+                        const questionNumber = qIdx + 1;
+                        let questionHasError = false;
+
+                        // Find elements within this specific block
+                        const qText = qBlock.querySelector('textarea[name^="q_text_"]');
+                        const marksInput = qBlock.querySelector('input[type="number"][name^="q_marks_"]');
+                        const optionsContainer = qBlock.querySelector('.options-container');
+                        const options = qBlock.querySelectorAll('.mcq-option');
+                        const correctRadiosChecked = qBlock.querySelectorAll('input[type="radio"]:checked');
+                        const anyRadio = qBlock.querySelector('input[type="radio"]');
+
+                        // 1. Question Text required
+                        if (!qText || !qText.value.trim()) { formIsValid = false; questionHasError = true; qText?.classList.add('border-red-500'); errorMessages.push(`Q#${questionNumber}: Question text required.`); if (!firstErrorElement) firstErrorElement = qText; }
+
+                        // 2. At least 2 Options required
+                        if (options.length < 2) { formIsValid = false; questionHasError = true; if(optionsContainer) optionsContainer.style.border = '1px solid red'; else qBlock.style.borderColor = 'red'; errorMessages.push(`Q#${questionNumber}: Needs at least 2 options.`); if(!firstErrorElement) firstErrorElement = optionsContainer || qBlock; }
+                        else {
+                             // Check option text required for all options
+                             options.forEach((opt, optIdx) => {
+                                const optText = opt.querySelector('input[type="text"]');
+                                if(optText && !optText.value.trim()){ formIsValid = false; questionHasError = true; optText.classList.add('border-red-500'); errorMessages.push(`Q#${questionNumber}, Opt#${optIdx+1}: Option text required.`); if(!firstErrorElement) firstErrorElement = optText; }
+                             });
+                        }
+
+                        // 3. Exactly one correct answer selected
+                        // Only check if there are actually radio buttons present
+                        if (anyRadio && correctRadiosChecked.length !== 1) {
+                           formIsValid = false; questionHasError = true;
+                           if(optionsContainer) optionsContainer.style.border = '1px solid red'; else qBlock.style.borderColor = 'red';
+                           errorMessages.push(`Q#${questionNumber}: Select exactly one correct answer.`);
+                           if(!firstErrorElement) firstErrorElement = optionsContainer || qBlock;
+                        }
+
+                        // 4. Marks positive
+                        if(marksInput && (!marksInput.value || parseFloat(marksInput.value) <= 0)) { formIsValid = false; questionHasError = true; marksInput.classList.add('border-red-500'); errorMessages.push(`Q#${questionNumber}: Marks must be positive.`); if (!firstErrorElement) firstErrorElement = marksInput; }
+
+                        // Highlight entire block if it has any error
+                        if (questionHasError) {
+                           qBlock.style.borderColor = '#ef4444'; // Red border
+                           qBlock.style.borderWidth = '2px';
+                        }
+
+                    }); // End question loop
+
+                    if (!formIsValid) {
+                        event.preventDefault(); // Prevent submission
+                        const fullErrorMsg = "Please fix the highlighted errors before saving:\n- " + errorMessages.join("\n- ");
+                        showToast(errorMessages[0] || "Please fix form errors.", "error", 7000); // Show first error briefly
+                        if(elements.errorArea){ elements.errorArea.textContent = fullErrorMsg; elements.errorArea.classList.remove('hidden');} // Show all errors in area
+                        if(firstErrorElement) { firstErrorElement.scrollIntoView({ behavior: 'smooth', block: 'center' }); firstErrorElement.focus();} // Scroll and focus
+                        console.log("MCQ form validation FAILED.");
+                    } else {
+                        console.log("MCQ form validation PASSED. Re-enabling fields and submitting...");
+                        // Re-enable fields in "deleted" blocks just before submitting
+                        elements.questionsContainer.querySelectorAll('.marked-for-delete input, .marked-for-delete textarea, .marked-for-delete select').forEach(el => {
+                            el.disabled = false;
+                        });
+                        // Let the form submit normally to use the existing route
+                    }
+                });
+            } else { console.warn("MCQ Form element not found, submit listener not attached."); }
+
+
+            // --- Show Initial Toasts ---
+            const showInitialToasts = () => {
+                 try { const urlParams = new URLSearchParams(window.location.search); const s = urlParams.get('toast_success'); const e = urlParams.get('toast_error'); if(s) showToast(decodeURIComponent(s),'success'); if(e) showToast(decodeURIComponent(e),'error'); if(s||e) window.history.replaceState({}, document.title, window.location.pathname); } catch(e) { console.error("Toast error", e); }
+             };
+             showInitialToasts();
+
+            console.log("MCQ Editor Initialized successfully.");
+
+        }); // End DOMContentLoaded
+    } catch(globalError) {
+        console.error("Global JavaScript Error:", globalError);
+        const wrapper = document.getElementById('mcq-editor-wrapper');
+        if(wrapper) wrapper.innerHTML = '<p class="text-red-600 p-4 text-center font-bold">A critical error occurred loading the editor. Check console.</p>';
+    }
+</script>
+
+{% endblock %}

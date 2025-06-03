@@ -1,0 +1,110 @@
+{% extends "layout.html" %}
+{% block title %}My Attendance{% endblock %}
+{% block page_title %}My Attendance Report{% endblock %}
+
+{% block head_extra %}
+<style>
+    /* Optional: Specific styles for status badges if needed */
+     .status-badge {
+        display: inline-flex;
+        padding: 0.125rem 0.625rem; /* py-0.5 px-2.5 */
+        font-size: 0.75rem; /* text-xs */
+        line-height: 1.25rem;
+        font-weight: 600; /* font-semibold */
+        border-radius: 9999px; /* rounded-full */
+        text-transform: capitalize; /* Nicer display */
+     }
+     /* Match colors used in instructor form */
+    .status-PRESENT { background-color: #dcfce7; color: #166534;}
+    .status-ABSENT { background-color: #fee2e2; color: #991b1b; }
+    .status-LATE { background-color: #fef3c7; color: #92400e; }
+    .status-EXCUSED { background-color: #e0e7ff; color: #3730a3; }
+    .status-UNKNOWN { background-color: #f3f4f6; color: #4b5563;} /* Fallback */
+</style>
+{% endblock %}
+
+{% block content %}
+ <div class="space-y-6">
+
+    {# Optional: Filtering Form #}
+    <div class="bg-white p-4 rounded-lg shadow border border-gray-200">
+        <form method="GET" action="{{ request.url_for('student_attendance_page') }}" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4 items-end">
+            <div>
+                <label for="filter_course_id" class="block text-sm font-medium text-gray-700 mb-1">Filter by Course:</label>
+                <select id="filter_course_id" name="filter_course_id" class="appearance-none rounded-md relative block w-full px-3 py-2 border border-gray-300 bg-white focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm">
+                    <option value="">All My Courses</option>
+                    {% for course in courses_enrolled %} {# Iterate through courses_enrolled #}
+                        <option value="{{ course.id }}" {% if current_filter_course_id == course.id %}selected{% endif %}>
+                            {{ course.name }}
+                        </option>
+                    {% endfor %}
+                </select>
+            </div>
+             <div>
+                <label for="filter_start_date" class="block text-sm font-medium text-gray-700 mb-1">Start Date:</label>
+                <input type="date" id="filter_start_date" name="filter_start_date" value="{{ current_filter_start_date }}" class="appearance-none rounded-md relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm">
+            </div>
+             <div>
+                <label for="filter_end_date" class="block text-sm font-medium text-gray-700 mb-1">End Date:</label>
+                <input type="date" id="filter_end_date" name="filter_end_date" value="{{ current_filter_end_date }}" class="appearance-none rounded-md relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm">
+            </div>
+            <div class="flex space-x-2">
+                <button type="submit" class="w-full sm:w-auto inline-flex justify-center items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">Filter</button>
+                <a href="{{ request.url_for('student_attendance_page') }}" class="w-full sm:w-auto inline-flex justify-center items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">Clear</a>
+            </div>
+        </form>
+    </div>
+
+
+    {# Attendance Records Table #}
+    <div class="bg-white p-4 md:p-6 rounded-lg shadow border border-gray-200">
+         <h3 class="text-xl font-semibold text-gray-700 mb-4">Attendance History</h3>
+         <div class="overflow-x-auto">
+             <table class="min-w-full divide-y divide-gray-200">
+                <thead class="bg-gray-50">
+                    <tr>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Course</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                    </tr>
+                </thead>
+                 <tbody class="bg-white divide-y divide-gray-200">
+                      {% if attendance_records %}
+                         {% for record in attendance_records %}
+                         <tr>
+                             <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-600">{{ record.date.strftime('%Y-%m-%d') if record.date else 'N/A' }}</td>
+                             {# Display Schedule Details #}
+                             <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                                 {% if record.schedule and record.schedule.course %}
+                                     {{ record.schedule.course.name }}
+                                     <span class="text-xs text-gray-500">({{ record.schedule.day_of_week }} {{ record.schedule.start_time }})</span>
+                                 {% else %}
+                                     N/A
+                                 {% endif %}
+                             </td>
+                             <td class="px-6 py-4 whitespace-nowrap text-sm">
+                                {# Apply status badge class dynamically #}
+                                {% set status_val = record.status.value if record.status else 'UNKNOWN' %}
+                                <span class="status-badge status-{{ status_val }}">
+                                     {{ status_val.replace('_', ' ') }}
+                                </span>
+                            </td>
+                         </tr>
+                         {% endfor %}
+                      {% else %}
+                         <tr>
+                             <td colspan="3" class="text-center py-4 text-gray-500">No attendance records found matching the criteria.</td> {# Adjust colspan #}
+                         </tr>
+                      {% endif %}
+                 </tbody>
+             </table>
+         </div>
+    </div> {# End Attendance Table #}
+
+</div> {# End Main Content Wrapper #}
+{% endblock %}
+
+{% block scripts_extra %}
+{# No specific JS needed for this read-only page, unless adding client-side sorting/filtering later #}
+{# Toast JS could be included if actions on this page could trigger them #}
+{% endblock %}

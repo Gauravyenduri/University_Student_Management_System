@@ -1,0 +1,478 @@
+{% extends "layout.html" %}
+{% block title %}Manage Complaints{% endblock %}
+{% block page_title %}Manage Student Complaints{% endblock %}
+
+{% block head_extra %}
+<style>
+    /* --- Styles --- */
+    #toast-container { position: fixed; top: 1.5rem; right: 1.5rem; z-index: 100; display: flex; flex-direction: column; gap: 0.75rem; }
+    .toast { display: flex; align-items: center; padding: 0.75rem 1rem; border-radius: 0.5rem; box-shadow: 0 10px 15px -3px rgba(0,0,0,0.1), 0 4px 6px -2px rgba(0,0,0,0.05); border-width: 1px; min-width: 250px; max-width: 400px; opacity: 0; transform: translateX(100%); transition: opacity 0.3s ease-out, transform 0.3s ease-out; pointer-events: none; }
+    .toast.show { opacity: 1; transform: translateX(0); pointer-events: auto; }
+    .toast-success { background-color: #dcfce7; border-color: #4ade80; color: #166534; }
+    .toast-error { background-color: #fee2e2; border-color: #f87171; color: #991b1b; }
+    .toast-icon { margin-right: 0.75rem; flex-shrink: 0; }
+    .toast-message { flex-grow: 1; font-size: 0.875rem; line-height: 1.25rem; word-break: break-word;}
+    .toast-close { margin-left: 1rem; background: transparent; border: none; color: inherit; opacity: 0.7; cursor: pointer; font-size: 1.2rem; line-height: 1;}
+    .toast-close:hover { opacity: 1; }
+
+    /* Standard input/select/textarea styling */
+    .form-input, .form-select, .form-textarea {
+        appearance: none; border-radius: 0.375rem; position: relative; display: block; width: 100%;
+        padding-left: 0.75rem; padding-right: 0.75rem; padding-top: 0.5rem; padding-bottom: 0.5rem;
+        border-width: 1px; border-color: #d1d5db; --tw-shadow: 0 0 #0000; box-shadow: var(--tw-ring-offset-shadow, 0 0 #0000), var(--tw-ring-shadow, 0 0 #0000), var(--tw-shadow);
+        placeholder-color: #6b7280; color: #111827; font-size: 0.875rem; line-height: 1.25rem;
+    }
+     .form-input:focus, .form-select:focus, .form-textarea:focus {
+        outline: 2px solid transparent; outline-offset: 2px; z-index: 10;
+        --tw-ring-color: #3b82f6; border-color: #3b82f6;
+        --tw-ring-offset-shadow: var(--tw-ring-inset) 0 0 0 var(--tw-ring-offset-width) var(--tw-ring-offset-color);
+        --tw-ring-shadow: var(--tw-ring-inset) 0 0 0 calc(1px + var(--tw-ring-offset-width)) var(--tw-ring-color);
+        box-shadow: var(--tw-ring-offset-shadow), var(--tw-ring-shadow), var(--tw-shadow, 0 0 #0000);
+    }
+     .form-select { background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%236b7280' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M6 8l4 4 4-4'/%3e%3c/svg%3e"); background-position: right 0.5rem center; background-repeat: no-repeat; background-size: 1.5em 1.5em; padding-right: 2.5rem; }
+
+     /* Button Styles */
+     .btn { display: inline-flex; align-items: center; justify-content: center; padding-left: 1rem; padding-right: 1rem; padding-top: 0.5rem; padding-bottom: 0.5rem; border-width: 1px; border-color: transparent; font-size: 0.875rem; line-height: 1.25rem; font-weight: 500; border-radius: 0.375rem; box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05); transition: background-color 0.15s ease-in-out, border-color 0.15s ease-in-out; cursor: pointer; }
+     .btn:focus { outline: 2px solid transparent; outline-offset: 2px; --tw-ring-offset-shadow: var(--tw-ring-inset) 0 0 0 var(--tw-ring-offset-width) var(--tw-ring-offset-color); --tw-ring-shadow: var(--tw-ring-inset) 0 0 0 calc(2px + var(--tw-ring-offset-width)) var(--tw-ring-color); box-shadow: var(--tw-ring-offset-shadow), var(--tw-ring-shadow), var(--tw-shadow, 0 0 #0000); }
+     .btn-primary { color: #ffffff; background-color: #2563eb; --tw-ring-color: #60a5fa;} .btn-primary:hover { background-color: #1d4ed8;} .btn-primary:focus { --tw-ring-offset-color: #bfdbfe;}
+     .btn-secondary { color: #374151; background-color: #ffffff; border-color: #d1d5db;} .btn-secondary:hover { background-color: #f9fafb;} .btn-secondary:focus { --tw-ring-color: #4f46e5; border-color: #a5b4fc;}
+     .btn-sm { padding-left: 0.75rem; padding-right: 0.75rem; padding-top: 0.25rem; padding-bottom: 0.25rem; font-size: 0.75rem; line-height: 1rem;}
+     .btn-danger-text { color: #dc2626; background: none; border: none; padding: 0; font-weight: 500; font-size: 0.875rem;} .btn-danger-text:hover { color: #b91c1c; text-decoration-line: underline; } .btn-danger-text:focus { outline: none; text-decoration: underline; }
+     .btn-info-text { color: #4f46e5; background: none; border: none; padding: 0; font-weight: 500; font-size: 0.875rem;} .btn-info-text:hover { color: #3730a3; text-decoration-line: underline; } .btn-info-text:focus { outline: none; text-decoration: underline; }
+
+     /* Status Badges */
+     .status-badge { display: inline-flex; padding: 0.125rem 0.625rem; font-size: 0.75rem; line-height: 1.25rem; font-weight: 600; border-radius: 9999px; text-transform: capitalize; border: 1px solid transparent;}
+     .status-OPEN { background-color: #fef9c3; color: #ca8a04; border-color: #fde047;}
+     .status-IN_PROGRESS { background-color: #dbeafe; color: #1d4ed8; border-color: #93c5fd;}
+     .status-RESOLVED { background-color: #dcfce7; color: #166534; border-color: #86efac;}
+     .status-CLOSED { background-color: #f3f4f6; color: #4b5563; border-color: #d1d5db;}
+     .status-UNKNOWN { background-color: #f3f4f6; color: #4b5563;}
+
+    /* Complaint Card Styling */
+    .complaint-card { border: 1px solid #e5e7eb; border-radius: 0.5rem; background-color: white; box-shadow: 0 1px 2px 0 rgba(0,0,0,0.05); }
+    .complaint-header { padding: 0.75rem 1rem; border-bottom: 1px solid #e5e7eb; background-color: #f9fafb; border-top-left-radius: 0.5rem; border-top-right-radius: 0.5rem; }
+    .complaint-body { padding: 1rem; }
+    .complaint-actions { padding: 0.75rem 1rem; border-top: 1px solid #e5e7eb; background-color: #f9fafb; border-bottom-left-radius: 0.5rem; border-bottom-right-radius: 0.5rem; text-align: right;}
+    /* Searchable dropdown styles - these supplement Tailwind classes */
+    .search-dropdown-container { position: relative; }
+    .search-dropdown-options { 
+        position: absolute; 
+        top: 100%; 
+        left: 0; 
+        right: 0; 
+        max-height: 200px; 
+        overflow-y: auto; 
+        z-index: 20; 
+        display: none; 
+    }
+    .search-dropdown-options.show { display: block; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div id="complaint-admin-manager-wrapper"> {# Wrapper ID #}
+
+    {# Filter Controls #}
+    <div class="mb-6 bg-white p-4 rounded-lg shadow border border-gray-200">
+        <form method="GET" action="{{ request.url_for('admin_manage_complaints') }}" class="grid grid-cols-1 md:grid-cols-3 gap-4 items-end">
+            <div>
+                <label for="student-search-input" class="block text-sm font-medium text-gray-700 mb-1">Filter by Student:</label>
+                <div class="relative">
+                    <input type="text" id="student-search-input" class="form-input text-sm w-full" placeholder="Search students..." autocomplete="off">
+                    <input type="hidden" id="filter_student_id" name="filter_student_id" value="{{ current_filter_student_id if current_filter_student_id and current_filter_student_id != 'None' else '' }}">
+                    <div id="student-dropdown-options" class="hidden absolute z-10 w-full mt-1 bg-white border border-gray-200 rounded-md shadow-lg max-h-60 overflow-auto">
+                        <div class="search-dropdown-option py-2 px-3 cursor-pointer hover:bg-gray-100 text-sm" data-id="">All Students</div>
+                        {% for student in all_students %}
+                            <div class="search-dropdown-option py-2 px-3 cursor-pointer hover:bg-gray-100 text-sm" data-id="{{ student.id }}">
+                                {{ student.name }} (ID: {{ student.id }})
+                            </div>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+             <div>
+                <label for="filter_status" class="block text-sm font-medium text-gray-700 mb-1">Filter by Status:</label>
+                <select name="filter_status" id="filter_status" class="form-select text-sm" onchange="this.form.submit()">
+                    <option value="">All Statuses</option>
+                    {% for status_name in complaint_statuses %}
+                    <option value="{{ status_name }}" {% if current_filter_status == status_name %}selected{% endif %}>{{ status_name.replace('_', ' ') | title }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="flex space-x-2 md:justify-self-end">
+                <a href="{{ request.url_for('admin_manage_complaints') }}" class="btn btn-secondary btn-sm">Clear Filters</a> {# Use button classes #}
+            </div>
+        </form>
+    </div>
+
+    {# Toast Container #}
+    <div id="toast-container"></div>
+
+    {# Display Messages #}
+    {% if toast_success %} <div class="p-4 mb-4 text-sm text-green-700 bg-green-100 rounded-lg border border-green-300" role="alert">{{ toast_success }}</div> {% endif %}
+    {% if toast_error %} <div class="p-4 mb-4 text-sm text-red-700 bg-red-100 rounded-lg border border-red-300" role="alert">{{ toast_error }}</div> {% endif %}
+
+    {# Complaint List using Cards #}
+     <div class="space-y-4" id="complaint-list"> {# ID for JS #}
+         {% if complaints %}
+             {% for complaint in complaints %}
+             <div class="complaint-card" data-complaint-id="{{ complaint.id }}">
+                 <div class="complaint-header flex flex-wrap justify-between items-center gap-2">
+                     <div>
+                         <p class="text-sm font-medium text-gray-700">
+                             Student: <span class="font-semibold text-gray-900">{{ complaint.student.name if complaint.student else 'N/A' }}</span>
+                             <span class="text-gray-400 mx-1">|</span>
+                             Filed: <span class="font-normal text-gray-600">{{ complaint.date.strftime('%Y-%m-%d') if complaint.date else 'N/A' }}</span>
+                             <span class="text-gray-400 mx-1">|</span>
+                             ID: {{ complaint.id }}
+                         </p>
+                     </div>
+                     <span class="status-badge status-{{ complaint.status.name if complaint.status else 'UNKNOWN' }}">
+                        {{ complaint.status.value.replace('_', ' ') | title if complaint.status else 'Unknown' }}
+                     </span>
+                 </div>
+                 <div class="complaint-body space-y-3">
+                    <div>
+                        <p class="text-xs font-medium text-gray-500 uppercase tracking-wider mb-1">Description</p>
+                        <p class="text-sm text-gray-800 whitespace-pre-wrap">{{ complaint.description }}</p>
+                    </div>
+                    {% if complaint.resolution %}
+                     <div class="pt-3 border-t border-dashed border-gray-200">
+                         <p class="text-xs font-medium text-gray-500 uppercase tracking-wider mb-1">Resolution</p>
+                         <p class="text-sm text-gray-700 whitespace-pre-wrap">{{ complaint.resolution }}</p>
+                    </div>
+                    {% endif %}
+                 </div>
+                 {# Actions Footer #}
+                 <div class="complaint-actions space-x-3">
+                     <button type="button" class="update-complaint-btn btn btn-secondary btn-sm" {# Correct class and style #}
+                             data-complaint-id="{{ complaint.id }}"
+                             data-current-status="{{ complaint.status.name if complaint.status else '' }}"
+                             data-current-resolution="{{ complaint.resolution | default('', true) | e }}">
+                         Update Status
+                     </button>
+                     <form action="{{ url_for('admin_delete_complaint', complaint_id=complaint.id) }}" method="post" class="inline delete-complaint-form"> {# Correct class #}
+                          <button type="submit" class="btn-danger-text text-sm">Delete</button> {# Correct class #}
+                     </form>
+                 </div>
+             </div>
+             {% endfor %}
+         {% else %}
+             <div class="text-center py-10 px-4 bg-white rounded-lg shadow border border-gray-200">
+                <svg class="mx-auto h-12 w-12 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path vector-effect="non-scaling-stroke" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.172 16.172a4 4 0 015.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                <h3 class="mt-2 text-sm font-medium text-gray-900">No Complaints Found</h3>
+                <p class="mt-1 text-sm text-gray-500">There are no complaints matching the current filters.</p>
+            </div>
+         {% endif %}
+     </div> {# End Complaint List #}
+
+
+    {# Update Complaint Status/Resolution Modal #}
+    <div id="complaint-update-modal" class="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-0 hidden" aria-labelledby="modal-title" role="dialog" aria-modal="true">
+         <div id="modal-overlay" class="fixed inset-0 bg-black/50 backdrop-blur-sm" aria-hidden="true"></div>
+         <div id="modal-dialog" class="relative w-full max-w-lg overflow-hidden rounded-lg bg-white p-6 shadow-xl sm:my-8 sm:w-full sm:max-w-lg transform transition-all">
+             <div class="flex items-center justify-between pb-3 border-b border-gray-200">
+                 <h3 id="modal-title" class="text-lg font-semibold leading-6 text-gray-900">Update Complaint Status</h3>
+                 <button id="modal-close-btn" type="button" class="p-1 rounded-full text-gray-400 hover:bg-gray-200 hover:text-gray-600 focus:outline-none focus:ring-2 focus:ring-indigo-500">X</button>
+             </div>
+             <div class="mt-5">
+                 <div id="modal-error-area" class="hidden p-3 mb-4 text-sm text-red-700 bg-red-100 rounded-lg border border-red-300" role="alert"></div>
+                 <form id="modal-form" action="#" method="post" class="space-y-4">
+                     <div>
+                         <label for="modal-new-status" class="block text-sm font-medium text-gray-700 mb-1">New Status:</label>
+                         <select id="modal-new-status" name="new_status" required class="form-select">
+                             <option value="">-- Select Status --</option>
+                             {# Populated by JS #}
+                         </select>
+                     </div>
+                     <div>
+                         <label for="modal-resolution" class="block text-sm font-medium text-gray-700 mb-1">Resolution Note (Optional):</label>
+                         <textarea id="modal-resolution" name="resolution_note" rows="4" class="form-textarea mt-1"></textarea>
+                     </div>
+                     <div class="flex justify-end space-x-3 pt-4 border-t border-gray-200 mt-6">
+                         <button id="modal-cancel-btn" type="button" class="btn btn-secondary"> Cancel </button>
+                         <button id="modal-submit-btn" type="submit" class="btn btn-primary"> Update Complaint </button>
+                     </div>
+                 </form>
+             </div>
+         </div>
+    </div>
+
+</div>{# End Wrapper #}
+
+<script>
+    try { // Global try-catch
+    document.addEventListener('DOMContentLoaded', () => {
+        console.log("Initializing Admin Complaint Manager...");
+
+        // --- Elements ---
+        const elements = {
+             modal: document.getElementById('complaint-update-modal'), // Correct ID
+             overlay: document.getElementById('modal-overlay'),
+             dialog: document.getElementById('modal-dialog'),
+             modalTitle: document.getElementById('modal-title'),
+             modalForm: document.getElementById('modal-form'),
+             statusSelect: document.getElementById('modal-new-status'), // Correct ID
+             resolutionTextarea: document.getElementById('modal-resolution'), // Correct ID
+             errorArea: document.getElementById('modal-error-area'),
+             submitBtn: document.getElementById('modal-submit-btn'),
+             closeBtn: document.getElementById('modal-close-btn'),
+             cancelBtn: document.getElementById('modal-cancel-btn'),
+             complaintList: document.getElementById('complaint-list'), // Correct ID
+             toastContainer: document.getElementById('toast-container')
+             // No Add button on this admin page
+        };
+
+        // --- Element Check ---
+        let allElementsFound = true;
+        for (const [key, value] of Object.entries(elements)) {
+            // complaintList can be null if no complaints found
+            if (!value && key !== 'complaintList') { console.error(`Complaint Admin Init Error: Element '${key}' not found.`); allElementsFound = false; }
+        }
+        if (!allElementsFound) {
+             const wrapper = document.getElementById('complaint-admin-manager-wrapper');
+             if(wrapper) wrapper.innerHTML = '<p class="...">Page Error...</p>';
+             return;
+        }
+        console.log("All required complaint admin elements found.");
+
+        // --- Data Initialization (Statuses for Modal) ---
+        let complaintStatuses = []; try { complaintStatuses = {{ complaint_statuses | tojson | safe }}; if (!Array.isArray(complaintStatuses)) throw new Error();} catch(e) {console.error("Err parsing statuses", e);}
+
+        // --- Populate Status Select ---
+        function populateStatusSelect() {
+             if (!elements.statusSelect) return;
+             elements.statusSelect.options.length = 1; // Keep placeholder
+             complaintStatuses.forEach(statusName => {
+                 const option = document.createElement('option'); option.value = statusName; // Use NAME
+                 option.textContent = statusName.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+                 elements.statusSelect.appendChild(option);
+             });
+         }
+         populateStatusSelect();
+
+        // --- Toast Function ---
+        const showToast = (message, type = 'info', duration = 4000) => { /* ... same ... */ };
+
+        // --- Modal State & Helpers ---
+        let editId = null; // Only Edit mode for this modal
+        const closeModal = () => { if(elements.modal) elements.modal.classList.add('hidden'); resetForm(); };
+        const resetForm = () => {
+            if (elements.modalForm) elements.modalForm.reset();
+            if (elements.statusSelect) elements.statusSelect.value = ""; // Reset select
+            if (elements.errorArea) { elements.errorArea.classList.add('hidden'); elements.errorArea.textContent = ''; }
+            document.querySelectorAll(`#${elements.modalForm?.id} .border-red-500`).forEach(el => el.classList.remove('border-red-500'));
+        };
+
+        const openModal = (data = null) => { // Only opens for editing status/resolution
+             if (!elements.modal || !elements.modalForm || !data || !data.id) { console.error("Cannot open update modal: elements missing or no data/ID."); showToast("Error opening form.", "error"); return; };
+             resetForm();
+             editId = data.id;
+             elements.modalTitle.textContent = `Update Complaint #${editId}`;
+             elements.modalForm.action = `{{ request.url_for('admin_update_complaint', complaint_id=0) }}`.replace('/0/update', `/${editId}/update`); // Construct action URL
+             elements.statusSelect.value = data.currentStatus || ''; // Pre-select current status NAME
+             elements.resolutionTextarea.value = data.currentResolution || '';
+             elements.submitBtn.textContent = 'Update Complaint';
+             elements.modal.classList.remove('hidden');
+        };
+
+        // --- Delete Handler ---
+         const handleDelete = (formElement) => {
+             if (!formElement || !formElement.action) return;
+             const url = formElement.action;
+             fetch(url, { method: 'POST', headers: { 'Accept': 'application/json' /* CSRF? */ }})
+             .then(response => response.ok ? response.json() : response.json().then(err => Promise.reject(err)))
+             .then(data => {
+                 if (data.success) { showToast(data.message || 'Complaint deleted.', 'success'); formElement.closest('.complaint-card')?.remove(); } // Remove card
+                 else { showToast(data.message || 'Failed to delete.', 'error'); }
+             })
+             .catch(error => { showToast(`Error: ${error.message || 'Could not delete complaint.'}`, 'error'); });
+         };
+
+        // --- Event Listeners ---
+        // Update/Delete Buttons using Delegation on the list container
+        if(elements.complaintList) {
+             elements.complaintList.addEventListener('click', event => {
+                 const updateBtn = event.target.closest('.update-complaint-btn'); // Correct class
+                 const delForm = event.target.closest('.delete-complaint-form'); // Correct class
+                 if(updateBtn) {
+                     const data = { // Read data attributes
+                        id: updateBtn.dataset.complaintId,
+                        currentStatus: updateBtn.dataset.currentStatus, // Status NAME
+                        currentResolution: updateBtn.dataset.currentResolution
+                     };
+                     openModal(data); // Open the update modal
+                 } else if(delForm) {
+                     event.preventDefault();
+                     if(confirm('Are you sure you want to permanently delete this complaint record?')) {
+                         handleDelete(delForm);
+                     }
+                 }
+             });
+        } else { console.log("Complaint list container not found (maybe no complaints)."); }
+
+        // Close listeners
+        if(elements.overlay) elements.overlay.addEventListener('click', closeModal);
+        if(elements.closeBtn) elements.closeBtn.addEventListener('click', closeModal);
+        if(elements.cancelBtn) elements.cancelBtn.addEventListener('click', closeModal);
+        if(elements.dialog) elements.dialog.addEventListener('click', (event) => { event.stopPropagation(); });
+        window.addEventListener('keydown', (event) => { if (elements.modal && !elements.modal.classList.contains('hidden') && event.key === 'Escape') { closeModal(); }});
+
+        // --- Form Validation (Modal) ---
+         if(elements.modalForm) {
+             elements.modalForm.addEventListener('submit', event => {
+                 let isValid = true; errorMsg = "";
+                 if(elements.errorArea) elements.errorArea.classList.add('hidden');
+                 elements.statusSelect.classList.remove('border-red-500'); // Clear border
+
+                 if(!elements.statusSelect.value) { // Must select a status
+                     isValid = false; errorMsg += "Please select a new status for the complaint.\n";
+                     elements.statusSelect.classList.add('border-red-500');
+                 }
+
+                 if(!isValid){ event.preventDefault(); if(elements.errorArea){ elements.errorArea.textContent = errorMsg.trim(); elements.errorArea.classList.remove('hidden'); }}
+             });
+         }
+         // --- Searchable Student Dropdown ---
+// --- Searchable Student Dropdown ---
+function initStudentSearchDropdown() {
+    const searchInput = document.getElementById('student-search-input');
+    const optionsContainer = document.getElementById('student-dropdown-options');
+    const hiddenInput = document.getElementById('filter_student_id');
+    const form = searchInput?.closest('form');
+    
+    if (!searchInput || !optionsContainer || !hiddenInput || !form) return;
+    
+    // Initial setup - show current selection or "All Students"
+    const currentStudentId = hiddenInput.value;
+    if (currentStudentId && currentStudentId !== "None") {
+        const selectedOption = optionsContainer.querySelector(`[data-id="${currentStudentId}"]`);
+        if (selectedOption) {
+            searchInput.value = selectedOption.textContent.trim();
+        }
+    } else {
+        searchInput.value = "All Students";
+        hiddenInput.value = ""; // Important: Empty string, not "None"
+    }
+    
+    // Toggle dropdown on input focus
+    searchInput.addEventListener('focus', () => {
+        optionsContainer.classList.remove('hidden');
+    });
+    
+    // Hide dropdown when clicking outside
+    document.addEventListener('click', (e) => {
+        if (!searchInput.contains(e.target) && !optionsContainer.contains(e.target)) {
+            optionsContainer.classList.add('hidden');
+        }
+    });
+    
+    // Filter options as user types
+    searchInput.addEventListener('input', () => {
+        const searchTerm = searchInput.value.toLowerCase();
+        let hasResults = false;
+        
+        Array.from(optionsContainer.children).forEach(option => {
+            if (option.textContent.toLowerCase().includes(searchTerm)) {
+                option.classList.remove('hidden');
+                hasResults = true;
+            } else {
+                option.classList.add('hidden');
+            }
+        });
+        
+        // Add or remove "no results" message
+        const existingNoResults = optionsContainer.querySelector('.no-results');
+        if (!hasResults) {
+            if (!existingNoResults) {
+                const noResults = document.createElement('div');
+                noResults.className = 'no-results py-2 px-3 text-gray-500 italic text-sm';
+                noResults.textContent = 'No matching students found';
+                optionsContainer.appendChild(noResults);
+            }
+        } else if (existingNoResults) {
+            existingNoResults.remove();
+        }
+    });
+    
+    // Select option on click
+    optionsContainer.addEventListener('click', (e) => {
+        const option = e.target.closest('.search-dropdown-option');
+        if (!option) return;
+        
+        const id = option.dataset.id;
+        hiddenInput.value = id; // This will be empty string for "All Students"
+        searchInput.value = option.textContent.trim();
+        optionsContainer.classList.add('hidden');
+        
+        // Submit form to apply the filter
+        form.submit();
+    });
+    
+    // Keyboard navigation support
+    searchInput.addEventListener('keydown', (e) => {
+        const visibleOptions = Array.from(optionsContainer.querySelectorAll('.search-dropdown-option:not(.hidden)'));
+        
+        if (e.key === 'Escape') {
+            optionsContainer.classList.add('hidden');
+        } else if (e.key === 'ArrowDown') {
+            e.preventDefault();
+            if (optionsContainer.classList.contains('hidden')) {
+                optionsContainer.classList.remove('hidden');
+                return;
+            }
+            
+            const highlightedIndex = visibleOptions.findIndex(opt => opt.classList.contains('bg-gray-200'));
+            if (highlightedIndex >= 0) {
+                visibleOptions[highlightedIndex].classList.remove('bg-gray-200');
+                const nextIndex = (highlightedIndex + 1) % visibleOptions.length;
+                visibleOptions[nextIndex].classList.add('bg-gray-200');
+            } else if (visibleOptions.length > 0) {
+                visibleOptions[0].classList.add('bg-gray-200');
+            }
+        } else if (e.key === 'ArrowUp') {
+            e.preventDefault();
+            if (optionsContainer.classList.contains('hidden')) {
+                optionsContainer.classList.remove('hidden');
+                return;
+            }
+            
+            const highlightedIndex = visibleOptions.findIndex(opt => opt.classList.contains('bg-gray-200'));
+            if (highlightedIndex >= 0) {
+                visibleOptions[highlightedIndex].classList.remove('bg-gray-200');
+                const prevIndex = (highlightedIndex - 1 + visibleOptions.length) % visibleOptions.length;
+                visibleOptions[prevIndex].classList.add('bg-gray-200');
+            } else if (visibleOptions.length > 0) {
+                visibleOptions[visibleOptions.length - 1].classList.add('bg-gray-200');
+            }
+        } else if (e.key === 'Enter') {
+            e.preventDefault();
+            const highlighted = optionsContainer.querySelector('.search-dropdown-option.bg-gray-200');
+            if (highlighted) {
+                highlighted.click();
+            } else if (visibleOptions.length === 1) {
+                visibleOptions[0].click();
+            }
+        }
+    });
+}
+
+// Initialize the student search dropdown
+initStudentSearchDropdown();
+
+        // --- Show Initial Toasts ---
+        const showInitialToasts = () => {
+             try { const urlParams = new URLSearchParams(window.location.search); const s = {{ toast_success | tojson | safe }}; const e = {{ toast_error | tojson | safe }}; if(s) showToast(decodeURIComponent(s),'success'); if(e) showToast(decodeURIComponent(e),'error'); if(urlParams.has('toast_success') || urlParams.has('toast_error')) window.history.replaceState({}, document.title, window.location.pathname); } catch(e) { console.error("Toast error", e); }
+         };
+         showInitialToasts(); // Call on load
+
+        console.log("Admin Complaint Manager Initialized.");
+
+    }); // End DOMContentLoaded
+    } catch(globalError) {
+        console.error("Global JS Error:", globalError);
+        const wrapper = document.getElementById('complaint-admin-manager-wrapper');
+        if(wrapper) wrapper.innerHTML = '<p class="text-red-600 p-4 text-center font-bold">A critical error occurred loading page scripts.</p>';
+    }
+</script>
+{% endblock %}

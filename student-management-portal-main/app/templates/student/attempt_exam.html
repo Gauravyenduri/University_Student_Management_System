@@ -1,0 +1,110 @@
+{% extends "layout.html" %}
+{% block title %}Attempt: {{ exam.name }}{% endblock %}
+{% block page_title %}Attempting: {{ exam.name }} ({{ exam.course.name if exam.course else '' }}){% endblock %}
+
+{% block head_extra %}
+<style>
+    .question-block { margin-bottom: 2rem; padding: 1.5rem; background-color: white; border-radius: 0.5rem; box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06); border: 1px solid #e5e7eb; }
+    .question-text { font-weight: 600; margin-bottom: 1rem; color: #1f2937; /* gray-800 */ }
+    .option-label { display: flex; align-items: center; padding: 0.75rem; border: 1px solid #d1d5db; border-radius: 0.375rem; margin-bottom: 0.5rem; cursor: pointer; transition: background-color 0.2s, border-color 0.2s; }
+    .option-label:hover { background-color: #f9fafb; /* gray-50 */ }
+    /* Style selected option */
+    input[type="radio"]:checked + .option-label { background-color: #eff6ff; /* blue-50 */ border-color: #60a5fa; /* blue-400 */ }
+    input[type="radio"] { /* Hide default radio */ appearance: none; -webkit-appearance: none; -moz-appearance: none; position: absolute; opacity: 0; width: 0; height: 0; }
+    /* Custom radio indicator (optional) */
+    /* .custom-radio { width: 1rem; height: 1rem; border: 1px solid #9ca3af; border-radius: 50%; margin-right: 0.75rem; flex-shrink: 0; display: inline-block; position: relative; }
+    input[type="radio"]:checked + .option-label .custom-radio { border-color: #2563eb; background-color: #2563eb; }
+    input[type="radio"]:checked + .option-label .custom-radio::after { content: ""; display: block; width: 0.5rem; height: 0.5rem; background: white; border-radius: 50%; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); } */
+     /* Using standard radio for simplicity */
+     .option-label input[type="radio"] { appearance: radio; opacity: 1; position: static; width: 1em; height: 1em; margin-right: 0.75rem;}
+
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="max-w-4xl mx-auto"> {# Center content #}
+
+    <div class="mb-6 text-sm text-gray-600">
+        <a href="{{ request.url_for('student_exams_page') }}" class="text-blue-600 hover:underline">← Back to Exam List</a>
+    </div>
+
+    <h2 class="text-2xl font-bold text-gray-800 mb-1">{{ exam.name }}</h2>
+    <p class="text-md text-gray-600 mb-2">{{ exam.course.name if exam.course else 'Course' }} - {{ exam.type.value if exam.type else 'Exam' }}</p>
+    <p class="text-sm text-gray-500 mb-4">Total Marks: {{ "%.1f"|format(exam.total_marks | default(0.0)) }}</p>
+    {% if exam.description %}
+    <div class="prose prose-sm max-w-none text-gray-700 mb-6 p-3 bg-gray-50 border rounded">
+        {{ exam.description | safe }} {# Allow basic HTML if needed, otherwise escape #}
+    </div>
+    {% endif %}
+
+    {# Submission Form #}
+    <form id="exam-submission-form" method="POST" action="{{ request.url_for('student_submit_exam', exam_id=exam.id) }}" onsubmit="return confirm('Are you sure you want to submit your answers? You cannot change them afterwards.');">
+        <div class="space-y-8">
+            {% if questions %}
+                {% for question in questions %}
+                <div class="question-block" id="q-{{ question.id }}">
+                    <p class="question-text">{{ loop.index }}. {{ question.question_text }}</p>
+                    <p class="text-xs text-gray-500 mb-3">(Marks: {{ "%.1f"|format(question.marks | default(0.0)) }})</p>
+
+                    <div class="options-list space-y-2">
+                        {% if question.options %}
+                            {% for option in question.options %}
+                                {# Use question ID and option text to make name/id unique and value meaningful #}
+                                {# The radio group name MUST be unique per question #}
+                                {# The radio value MUST be the actual option text for grading #}
+                                <div>
+                                     <input type="radio"
+                                           id="q_{{ question.id }}_opt_{{ loop.index0 }}"
+                                           name="q_answer_{{ question.id }}" {# Group by question ID #}
+                                           value="{{ option.text | e }}" {# Value IS the option text #}
+                                           required {# Make selection required per question #}
+                                           class="absolute opacity-0 w-0 h-0"> {# Hide radio, use label #}
+                                    <label for="q_{{ question.id }}_opt_{{ loop.index0 }}" class="option-label">
+                                         {# If using custom radio indicator: <span class="custom-radio"></span> #}
+                                         {# Standard Radio: #}
+                                         <input type="radio" name="q_answer_{{ question.id }}" value="{{ option.text | e }}" required class="form-checkbox mr-3 focus:ring-offset-0">
+                                        <span>{{ option.text }}</span>
+                                    </label>
+                                </div>
+                            {% endfor %}
+                        {% else %}
+                            <p class="text-sm text-red-500">Error: No options found for this question.</p>
+                        {% endif %}
+                    </div>
+                </div>
+                {% endfor %}
+
+                {# Submit Button #}
+                <div class="pt-6 border-t mt-8 flex justify-center">
+                    <button type="submit" class="px-8 py-3 bg-green-600 text-white font-semibold rounded-lg hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2 transition duration-150">
+                        Submit My Answers
+                    </button>
+                </div>
+
+            {% else %}
+                <p class="text-center text-gray-500 py-6">No questions found for this exam.</p>
+            {% endif %} {# End questions check #}
+        </div>
+    </form>
+
+</div>
+{% endblock %}
+
+{% block scripts_extra %}
+{# Basic script for styling selected radio label, optional #}
+<script>
+    document.querySelectorAll('input[type="radio"][name^="q_answer_"]').forEach(radio => {
+        radio.addEventListener('change', (event) => {
+            const groupName = event.target.name;
+            // Remove selected style from all labels in the group
+            document.querySelectorAll(`input[type="radio"][name="${groupName}"]`).forEach(r => {
+                r.closest('label')?.classList.remove('bg-blue-100', 'border-blue-400', 'ring-2', 'ring-blue-300'); // Example selection style
+            });
+            // Add selected style to the chosen one
+            if (event.target.checked) {
+                 event.target.closest('label')?.classList.add('bg-blue-100', 'border-blue-400', 'ring-2', 'ring-blue-300');
+            }
+        });
+    });
+</script>
+{% endblock %}

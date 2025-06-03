@@ -1,0 +1,94 @@
+{% extends "layout.html" %}
+{% block title %}My Exams & Assignments{% endblock %}
+{% block page_title %}My Exams & Assignments{% endblock %}
+
+{% block head_extra %}
+<style>
+    /* Optional: Specific styles if needed */
+    .exam-card {
+        transition: box-shadow 0.2s ease-in-out;
+    }
+    .exam-card:hover {
+        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06); /* shadow-md */
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+ <div class="space-y-6">
+
+    {# Display errors if any occurred fetching data #}
+    {% if error_message %}
+        <div class="p-4 mb-4 text-sm text-red-700 bg-red-100 rounded-lg border border-red-300" role="alert">
+            {{ error_message }}
+        </div>
+    {% endif %}
+
+    {# Exam List Section #}
+    <div class="bg-white p-4 md:p-6 rounded-lg shadow border border-gray-200">
+         <h3 class="text-xl font-semibold text-gray-700 mb-4">Published Exams and Assignments</h3>
+
+         {% if published_exams %}
+             <div class="space-y-4">
+                 {% for exam in published_exams %}
+                     {# Display each exam as a card or list item #}
+                     <div class="exam-card border border-gray-200 rounded-lg p-4 flex flex-col sm:flex-row justify-between items-start gap-4">
+                         {# Left Side: Details #}
+                         <div class="flex-grow">
+                             <h4 class="text-lg font-semibold text-blue-700 mb-1">{{ exam.name }}</h4>
+                             <p class="text-sm text-gray-600 mb-1">
+                                 <span class="font-medium">Course:</span> {{ exam.course.name if exam.course else 'N/A' }}
+                             </p>
+                             <p class="text-sm text-gray-600 mb-1">
+                                 <span class="font-medium">Type:</span> {{ exam.type.value if exam.type else 'N/A' }}
+                             </p>
+                             <p class="text-sm text-gray-600 mb-1">
+                                 <span class="font-medium">Date/Due:</span> {{ exam.date.strftime('%Y-%m-%d') if exam.date else 'Not Specified' }}
+                             </p>
+                             <p class="text-sm text-gray-600">
+                                 <span class="font-medium">Total Marks:</span> {{ "%.1f"|format(exam.total_marks | default(0.0)) }}
+                             </p>
+                             {% if exam.description %}
+                             <p class="mt-2 text-xs text-gray-500 italic">
+                                {{ exam.description }}
+                             </p>
+                             {% endif %}
+                         </div>
+                         {# Right Side: Action Button #}
+                         <div class="flex-shrink-0 mt-2 sm:mt-0">
+                            {% if results_map and exam.id in results_map %} {# Check if result exists for this exam #}
+                                {% set result = results_map[exam.id] %} {# Get result for current exam #}
+                                {# Attempt exists - show View Results button #}
+                                <a href="{{ request.url_for('student_view_result', result_id=result.id) }}" class="inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
+                                     View Results
+                                     {# Display score if available and graded #}
+                                     {% if result.is_graded and result.score is not none %}
+                                         <span class="ml-2 text-xs font-semibold {{ 'text-green-700' if result.score >= (exam.total_marks * 0.5) else 'text-red-700' }}">
+                                             ({{ "%.1f"|format(result.score) }}/{{ "%.1f"|format(exam.total_marks) }})
+                                         </span>
+                                     {% elif result.submitted_at %}
+                                          <span class="ml-2 text-xs text-gray-500">(Submitted)</span>
+                                     {% endif %}
+                                 </a>
+                            {% else %}
+                                {# No attempt - show Start Exam button #}
+                                 <a href="{{ request.url_for('student_attempt_exam', exam_id=exam.id) }}" class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500">
+                                     Start Exam
+                                 </a>
+                            {% endif %}
+                         </div>
+                     </div>
+                 {% endfor %}
+             </div>
+         {% else %}
+             <p class="text-center text-gray-500 py-4">No published exams or assignments found for your enrolled courses at this time.</p>
+         {% endif %}
+    </div> {# End Exam List Section #}
+
+</div> {# End Main Content Wrapper #}
+{% endblock %}
+
+{% block scripts_extra %}
+{# No specific JS needed for this read-only list page currently #}
+{# Add JS later if implementing client-side filtering or interaction #}
+{% endblock %}

@@ -1,0 +1,234 @@
+{% extends "layout.html" %}
+{% block title %}Assign Scholarships{% endblock %}
+{% block page_title %}Manage Scholarship Assignments{% endblock %}
+
+{% block head_extra %}
+<style>
+    /* --- Basic Styles (Keep Toast styles) --- */
+    #toast-container { position: fixed; top: 1.5rem; right: 1.5rem; z-index: 100; display: flex; flex-direction: column; gap: 0.75rem; }
+    .toast { display: flex; align-items: center; padding: 0.75rem 1rem; border-radius: 0.5rem; box-shadow: 0 10px 15px -3px rgba(0,0,0,0.1), 0 4px 6px -2px rgba(0,0,0,0.05); border-width: 1px; min-width: 250px; max-width: 400px; opacity: 0; transform: translateX(100%); transition: opacity 0.3s ease-out, transform 0.3s ease-out; }
+    .toast.show { opacity: 1; transform: translateX(0); }
+    .toast-success { background-color: #dcfce7; border-color: #4ade80; color: #166534; }
+    .toast-error { background-color: #fee2e2; border-color: #f87171; color: #991b1b; }
+    .toast-icon { margin-right: 0.75rem; flex-shrink: 0; }
+    .toast-message { flex-grow: 1; font-size: 0.875rem; line-height: 1.25rem; word-break: break-word;}
+    .toast-close { margin-left: 1rem; background: transparent; border: none; color: inherit; opacity: 0.7; cursor: pointer; font-size: 1.2rem; line-height: 1;}
+    .toast-close:hover { opacity: 1; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div id="scholarship-assign-manager-wrapper"> {# Wrapper ID #}
+    <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 gap-4">
+        <h2 class="text-2xl font-semibold text-gray-800">Student Scholarship Assignments</h2>
+         <div class="flex flex-col sm:flex-row gap-2">
+            <a href="{{ url_for('admin_manage_scholarships_list') }}" class="inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 whitespace-nowrap">
+                Manage Definitions
+            </a>
+            <button id="assign-scholarship-btn" class="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2 whitespace-nowrap"> {# Changed color #}
+                Assign Scholarship
+            </button>
+         </div>
+    </div>
+
+     <div id="toast-container"></div> {# Toast container #}
+
+     {# Assignment List Table #}
+     <div class="bg-white p-4 md:p-6 rounded-lg shadow overflow-x-auto">
+         <table class="min-w-full divide-y divide-gray-200">
+             <thead class="bg-gray-50">
+                 <tr>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Assign ID</th>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Student</th>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Scholarship</th>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Academic Year</th>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Award Date</th>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+                </tr>
+            </thead>
+             <tbody id="assignment-table-body" class="bg-white divide-y divide-gray-200"> {# ID needed #}
+                  {% if assignments %}
+                     {% for assign in assignments %}
+                     <tr>
+                         <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{{ assign.id }}</td>
+                         <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-800">{{ assign.student.name if assign.student else 'N/A' }}</td>
+                         <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-700">{{ assign.scholarship.name if assign.scholarship else 'N/A' }}</td>
+                         <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-600">{{ assign.academic_year | default('N/A') }}</td>
+                         <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-600">{{ assign.award_date.strftime('%Y-%m-%d') if assign.award_date else 'N/A' }}</td>
+                         <td class="px-6 py-4 whitespace-nowrap text-sm font-medium space-x-2">
+                             {# Revoke (Delete) Form #}
+                            <form action="{{ url_for('admin_manage_scholarship_revoke', assignment_id=assign.id) }}" method="post" class="inline delete-assignment-form">
+                                 <button type="submit" class="text-red-600 hover:text-red-900">Revoke</button>
+                            </form>
+                            {# Edit button removed for simplicity, assuming revoke/re-assign workflow #}
+                         </td>
+                     </tr>
+                     {% endfor %}
+                  {% else %}
+                    <tr><td colspan="6" class="text-center py-4 text-gray-500">No scholarship assignments found.</td></tr>
+                  {% endif %}
+             </tbody>
+         </table>
+     </div>
+
+    {# Assignment Modal - Check IDs #}
+     <div id="assignment-modal" class="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-0 hidden" aria-labelledby="modal-title" role="dialog" aria-modal="true">
+        <div id="modal-overlay" class="fixed inset-0 bg-black/50 backdrop-blur-sm" aria-hidden="true"></div>
+        <div id="modal-dialog" class="relative w-full max-w-lg overflow-hidden rounded-lg bg-white p-6 shadow-xl sm:my-8 sm:w-full sm:max-w-lg transform transition-all">
+            <div class="flex items-center justify-between pb-3 border-b">
+                 <h3 id="modal-title" class="text-lg font-semibold leading-6 text-gray-900">Assign Scholarship</h3> {# Static title #}
+                 <button id="modal-close-btn" type="button" class="p-1 rounded-full text-gray-400 hover:bg-gray-100 hover:text-gray-600 focus:outline-none focus:ring-2 focus:ring-indigo-500"> <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" aria-hidden="true"> <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" /> </svg> </button>
+            </div>
+            <div class="mt-5">
+                 <div id="modal-error-area" class="hidden p-3 mb-4 text-sm text-red-700 bg-red-100 rounded-lg border border-red-300" role="alert"></div>
+                 <form id="modal-form" action="{{ url_for('admin_manage_scholarship_assign') }}" method="post" class="space-y-4"> {# Action set directly #}
+                     <div>
+                         <label for="modal-student-select" class="block text-sm font-medium text-gray-700 mb-1">Student:</label>
+                         <select id="modal-student-select" name="student_id_str" required class="appearance-none rounded-md relative block w-full px-3 py-2 border border-gray-300 bg-white focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm">
+                             <option value="">-- Select Student --</option>
+                             {# Populated by JS #}
+                        </select>
+                     </div>
+                     <div>
+                         <label for="modal-scholarship-select" class="block text-sm font-medium text-gray-700 mb-1">Scholarship:</label>
+                         <select id="modal-scholarship-select" name="scholarship_id_str" required class="appearance-none rounded-md relative block w-full px-3 py-2 border border-gray-300 bg-white focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm">
+                            <option value="">-- Select Scholarship --</option>
+                             {# Populated by JS #}
+                        </select>
+                     </div>
+                     <div>
+                         <label for="modal-academic-year" class="block text-sm font-medium text-gray-700 mb-1">Academic Year (Optional):</label>
+                         <input type="text" id="modal-academic-year" name="academic_year" placeholder="e.g., 2023-2024" class="appearance-none rounded-md relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm">
+                     </div>
+                     <div class="flex justify-end space-x-3 pt-4 border-t mt-4">
+                         <button id="modal-cancel-btn" type="button" class="px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"> Cancel </button>
+                         <button id="modal-submit-btn" type="submit" class="px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500"> Assign Scholarship </button> {# Changed color/text #}
+                     </div>
+                 </form>
+             </div>
+        </div>
+     </div>
+</div> {# End Wrapper #}
+
+<script>
+    // Wrap in try-catch
+    try {
+        document.addEventListener('DOMContentLoaded', () => {
+            console.log("DOM loaded. Initializing Scholarship Assignment Manager...");
+
+            // --- Get DOM Elements ---
+            const elements = {
+                modal: document.getElementById('assignment-modal'), // Corrected ID
+                overlay: document.getElementById('modal-overlay'),
+                dialog: document.getElementById('modal-dialog'),
+                modalTitle: document.getElementById('modal-title'),
+                modalForm: document.getElementById('modal-form'), // Corrected ID
+                studentSelect: document.getElementById('modal-student-select'), // Corrected ID
+                scholarshipSelect: document.getElementById('modal-scholarship-select'), // Corrected ID
+                academicYearInput: document.getElementById('modal-academic-year'), // Corrected ID
+                errorArea: document.getElementById('modal-error-area'),
+                submitBtn: document.getElementById('modal-submit-btn'),
+                closeBtn: document.getElementById('modal-close-btn'),
+                cancelBtn: document.getElementById('modal-cancel-btn'),
+                addBtn: document.getElementById('assign-scholarship-btn'), // Corrected ID
+                tableBody: document.getElementById('assignment-table-body'), // Corrected ID
+                toastContainer: document.getElementById('toast-container')
+            };
+
+            // --- Robust Element Check ---
+            let allElementsFound = true;
+            for (const [key, value] of Object.entries(elements)) {
+                if (!value) { console.error(`Assign Scholarship Init Error: Element '${key}' not found.`); allElementsFound = false; }
+            }
+            if (!allElementsFound) { const wrapper = document.getElementById('scholarship-assign-manager-wrapper'); if(wrapper) wrapper.innerHTML = '<p class="text-red-600 p-4 text-center font-bold">Error initializing page components. Check console.</p>'; return; }
+            console.log("All required assignment elements found.");
+
+            // --- Data Initialization ---
+            let students = []; try { students = {{ students_json | safe }}; } catch(e) { console.error("Error parsing students JSON", e); }
+            let scholarships = []; try { scholarships = {{ scholarships_json | safe }}; } catch(e) { console.error("Error parsing scholarships JSON", e); }
+
+            // --- Populate Selects ---
+             function populateSelect(selectElement, data, valueField, textField, placeholder) {
+                 if (!selectElement) return;
+                 selectElement.options.length = 1; selectElement.options[0].text = placeholder || "-- Select --"; selectElement.options[0].value = "";
+                 if (Array.isArray(data)) { data.forEach(item => { const option = document.createElement('option'); option.value = item[valueField]; option.textContent = item[textField]; selectElement.appendChild(option); }); }
+             }
+             populateSelect(elements.studentSelect, students, 'id', 'name', '-- Select Student --');
+             populateSelect(elements.scholarshipSelect, scholarships, 'id', 'name', '-- Select Scholarship --');
+
+            // --- Toast Function ---
+            const showToast = (message, type = 'info', duration = 4000) => { /* ... as before ... */ };
+
+            // --- Modal State & Helpers (Simplified for Add-Only) ---
+            const closeModal = () => { if(elements.modal) elements.modal.classList.add('hidden'); resetForm(); };
+            const resetForm = () => {
+                 if (elements.modalForm) elements.modalForm.reset();
+                 if (elements.errorArea) { elements.errorArea.classList.add('hidden'); elements.errorArea.textContent = ''; }
+                 // Reset selects
+                 if (elements.studentSelect) elements.studentSelect.value = "";
+                 if (elements.scholarshipSelect) elements.scholarshipSelect.value = "";
+            };
+            // Only need openModal for adding
+            const openModal = () => {
+                if (!elements.modal || !elements.modalForm || !elements.modalTitle) return;
+                resetForm(); // Reset before opening
+                elements.modalTitle.textContent = 'Assign Scholarship to Student';
+                // Action is already set in HTML
+                elements.modal.classList.remove('hidden');
+            };
+
+             // --- Function to Handle Deletion (Revoke) ---
+             const handleDelete = (formElement) => {
+                const url = formElement.action;
+                fetch(url, { method: 'POST', headers: { 'Accept': 'application/json' /* CSRF? */ }})
+                .then(response => response.ok ? response.json() : response.json().then(err => Promise.reject(err)))
+                .then(data => {
+                    if (data.success) {
+                        showToast(data.message || 'Assignment revoked.', 'success');
+                        formElement.closest('tr').remove(); // Remove table row
+                    } else { showToast(data.message || 'Failed to revoke.', 'error'); }
+                })
+                .catch(error => { showToast(`Error: ${error.message || 'Could not revoke assignment.'}`, 'error'); });
+             };
+
+            // --- Event Listeners ---
+            if(elements.addBtn) elements.addBtn.addEventListener('click', openModal); // Changed function called
+
+            if(elements.tableBody) { // Listener only for delete forms now
+                 elements.tableBody.addEventListener('click', (event) => {
+                    const deleteForm = event.target.closest('.delete-assignment-form');
+                    if (deleteForm) {
+                         event.preventDefault();
+                         if(confirm('Are you sure you want to revoke this scholarship assignment?')) {
+                             handleDelete(deleteForm);
+                         }
+                    }
+                 });
+             }
+            // Close listeners
+            if(elements.overlay) elements.overlay.addEventListener('click', closeModal);
+            if(elements.closeBtn) elements.closeBtn.addEventListener('click', closeModal);
+            if(elements.cancelBtn) elements.cancelBtn.addEventListener('click', closeModal);
+            if(elements.dialog) elements.dialog.addEventListener('click', (event) => { event.stopPropagation(); });
+            window.addEventListener('keydown', (event) => { if (elements.modal && !elements.modal.classList.contains('hidden') && event.key === 'Escape') { closeModal(); }});
+
+            // Form validation (optional for assignment)
+             if(elements.modalForm) {
+                  elements.modalForm.addEventListener('submit', (event) => {
+                      // Add checks if needed (e.g., ensure selects have values)
+                      let isValid = true;
+                      if (!elements.studentSelect.value) { isValid = false; /* show error */ }
+                      if (!elements.scholarshipSelect.value) { isValid = false; /* show error */ }
+                      if (!isValid) event.preventDefault();
+                  });
+             }
+
+            // --- Show Initial Toasts ---
+            const showInitialToasts = () => { /* ... as before ... */ };
+            showInitialToasts();
+
+            console.log("Scholarship Assignment Manager Initialized.");
+        }); // End DOMContentLoaded
+    } catch(globalError) { console.error("Global JS Error:", globalError); }
+</script>
+{% endblock %}

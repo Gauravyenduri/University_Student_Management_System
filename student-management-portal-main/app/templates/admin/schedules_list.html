@@ -1,0 +1,411 @@
+{% extends "layout.html" %}
+
+{% block title %}Manage Schedules{% endblock %}
+{% block page_title %}Manage Schedules{% endblock %}
+
+{% block head_extra %}
+<style>
+    /* --- Styles from previous correct version --- */
+    .timetable-cell { min-height: 90px; position: relative; }
+    .schedule-entry {
+        position: relative; cursor: pointer; transition: background-color 0.2s ease-in-out, transform 0.1s ease-in-out, box-shadow 0.2s ease-in-out;
+        box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05); margin-bottom: 3px; overflow: hidden; border-radius: 0.25rem;
+        border: 1px solid #60a5fa; /* Default blue border */
+        background-color: #eff6ff; /* Default light blue background */
+        padding: 0.375rem; padding-right: 1.75rem; /* Space for delete btn */
+    }
+    .schedule-entry:hover { background-color: #dbeafe; transform: translateY(-1px); box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06); z-index: 10; }
+    #timetable-grid > div:first-child > div { position: sticky; top: 0; z-index: 20; background-color: #e5e7eb; }
+    #timetable-grid > div > div:first-child { position: sticky; left: 0; z-index: 10; background-color: #f3f4f6; }
+    #timetable-grid > div:first-child > div:first-child { z-index: 30; background-color: #e5e7eb;}
+    .delete-schedule-btn {
+        position: absolute; top: 2px; right: 2px; padding: 1px; border-radius: 50%; background-color: rgba(255, 255, 255, 0.6);
+        color: #ef4444; opacity: 0.5; transition: opacity 0.2s ease-in-out, background-color 0.2s ease-in-out;
+        z-index: 15; line-height: 1; border: none; cursor: pointer;
+    }
+    .schedule-entry:hover .delete-schedule-btn { opacity: 1; background-color: rgba(255, 255, 255, 0.9); }
+    .delete-schedule-btn:hover { color: #dc2626; background-color: white; }
+    #toast-container { position: fixed; top: 1.5rem; right: 1.5rem; z-index: 100; display: flex; flex-direction: column; gap: 0.75rem; }
+    .toast { display: flex; align-items: center; padding: 0.75rem 1rem; border-radius: 0.5rem; box-shadow: 0 10px 15px -3px rgba(0,0,0,0.1), 0 4px 6px -2px rgba(0,0,0,0.05); border-width: 1px; min-width: 250px; max-width: 400px; opacity: 0; transform: translateX(100%); transition: opacity 0.3s ease-out, transform 0.3s ease-out; }
+    .toast.show { opacity: 1; transform: translateX(0); }
+    .toast-success { background-color: #dcfce7; border-color: #4ade80; color: #166534; }
+    .toast-error { background-color: #fee2e2; border-color: #f87171; color: #991b1b; }
+    .toast-info { background-color: #e0f2fe; border-color: #60a5fa; color: #1e40af; }
+    .toast-icon { margin-right: 0.75rem; flex-shrink: 0; }
+    .toast-message { flex-grow: 1; font-size: 0.875rem; line-height: 1.25rem; word-break: break-word;}
+    .toast-close { margin-left: 1rem; background: transparent; border: none; color: inherit; opacity: 0.7; cursor: pointer; font-size: 1.2rem; line-height: 1;}
+    .toast-close:hover { opacity: 1; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div id="schedule-manager-wrapper">
+
+    {# Header with Add button #}
+    <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 gap-4">
+        <h2 class="text-2xl font-semibold text-gray-800">Course Schedule Timetable</h2>
+        <button id="add-schedule-btn" class="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition duration-150 whitespace-nowrap">
+           Add New Schedule Entry
+        </button>
+    </div>
+
+    {# Toast Message Container - MUST exist #}
+    <div id="toast-container"></div>
+
+    {# Timetable Grid Container - MUST exist #}
+    <div class="bg-white rounded-lg shadow overflow-x-auto">
+        <div id="timetable-grid" class="min-w-[850px] md:min-w-full">
+            <p id="timetable-loading" class="p-4 text-center text-gray-500">Loading schedule...</p>
+        </div>
+    </div>
+
+    {# Modal Structure - Check ALL IDs #}
+    <div id="schedule-modal" class="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-0 hidden" aria-labelledby="modal-title" role="dialog" aria-modal="true">
+        <div id="modal-overlay" class="fixed inset-0 bg-black/50 backdrop-blur-sm" aria-hidden="true"></div>
+        <div id="modal-dialog" class="relative w-full max-w-2xl overflow-hidden rounded-lg bg-white p-6 shadow-xl sm:my-8 sm:w-full sm:max-w-2xl transform transition-all">
+            <div class="flex items-center justify-between pb-3 border-b">
+                <h3 id="modal-title" class="text-lg font-semibold leading-6 text-gray-900">Modal Title</h3>
+                <button id="modal-close-btn" type="button" class="p-1 rounded-full text-gray-400 hover:bg-gray-100 hover:text-gray-600 focus:outline-none focus:ring-2 focus:ring-indigo-500"> <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" aria-hidden="true"> <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" /> </svg> </button>
+            </div>
+            <div class="mt-5">
+                 <div id="modal-error-area" class="hidden p-3 mb-4 text-sm text-red-700 bg-red-100 rounded-lg border border-red-300" role="alert"></div>
+                 <form id="modal-form" action="#" method="post" class="space-y-4">
+                     <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                         <div> <label for="modal-course-select" class="block text-sm font-medium text-gray-700 mb-1">Course:</label> <select id="modal-course-select" name="course_id_str" required class="appearance-none rounded-md relative block w-full px-3 py-2 border border-gray-300 bg-white focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"> <option value="">-- Select Course --</option> </select> </div>
+                         <div> <label for="modal-instructor-select" class="block text-sm font-medium text-gray-700 mb-1">Instructor:</label> <select id="modal-instructor-select" name="instructor_id_str" required class="appearance-none rounded-md relative block w-full px-3 py-2 border border-gray-300 bg-white focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"> <option value="">-- Select Instructor --</option> </select> </div>
+                         <div> <label for="modal-classroom-select" class="block text-sm font-medium text-gray-700 mb-1">Classroom (Optional):</label> <select id="modal-classroom-select" name="classroom_id_str" class="appearance-none rounded-md relative block w-full px-3 py-2 border border-gray-300 bg-white focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"> <option value="">-- No Classroom --</option> </select> </div>
+                         <div> <label for="modal-day-of-week" class="block text-sm font-medium text-gray-700 mb-1">Day of Week:</label> <select id="modal-day-of-week" name="day_of_week" required class="appearance-none rounded-md relative block w-full px-3 py-2 border border-gray-300 bg-white focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"> <option value="">-- Select Day --</option> <option value="Monday">Monday</option> <option value="Tuesday">Tuesday</option> <option value="Wednesday">Wednesday</option> <option value="Thursday">Thursday</option> <option value="Friday">Friday</option> <option value="Saturday">Saturday</option> <option value="Sunday">Sunday</option> </select> </div>
+                         <div> <label for="modal-start-time" class="block text-sm font-medium text-gray-700 mb-1">Start Time:</label> <select id="modal-start-time" name="start_time" required class="appearance-none rounded-md relative block w-full px-3 py-2 border border-gray-300 bg-white focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"> <option value="">-- Select Start Time --</option> </select> </div>
+                         <div> <label for="modal-end-time" class="block text-sm font-medium text-gray-700 mb-1">End Time:</label> <select id="modal-end-time" name="end_time" required class="appearance-none rounded-md relative block w-full px-3 py-2 border border-gray-300 bg-white focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"> <option value="">-- Select End Time --</option> </select> </div>
+                     </div>
+                     <div class="flex justify-end space-x-3 pt-4 border-t mt-4">
+                         <button id="modal-cancel-btn" type="button" class="px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"> Cancel </button>
+                         <button id="modal-submit-btn" type="submit" class="px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"> Submit </button>
+                     </div>
+                 </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+{# Plain JavaScript Logic #}
+<script>
+    // Wrap the entire script in a try-catch for safety during initialization
+    try {
+        document.addEventListener('DOMContentLoaded', () => {
+            console.log("DOM loaded. Initializing Schedule Manager...");
+
+            // --- Get DOM Elements (Ensure IDs match HTML exactly) ---
+            const elements = {
+                modal: document.getElementById('schedule-modal'),
+                overlay: document.getElementById('modal-overlay'),
+                dialog: document.getElementById('modal-dialog'),
+                modalTitle: document.getElementById('modal-title'),
+                modalForm: document.getElementById('modal-form'),
+                courseSelect: document.getElementById('modal-course-select'),
+                instructorSelect: document.getElementById('modal-instructor-select'),
+                classroomSelect: document.getElementById('modal-classroom-select'),
+                daySelect: document.getElementById('modal-day-of-week'),
+                startTimeSelect: document.getElementById('modal-start-time'),
+                endTimeSelect: document.getElementById('modal-end-time'),
+                errorArea: document.getElementById('modal-error-area'),
+                submitBtn: document.getElementById('modal-submit-btn'),
+                closeBtn: document.getElementById('modal-close-btn'),
+                cancelBtn: document.getElementById('modal-cancel-btn'),
+                addBtn: document.getElementById('add-schedule-btn'),
+                gridContainer: document.getElementById('timetable-grid'),
+                toastContainer: document.getElementById('toast-container')
+            };
+
+            // --- Robust Element Check ---
+            let allElementsFound = true;
+            for (const [key, value] of Object.entries(elements)) {
+                if (!value) {
+                    console.error(`Initialization Error: Element for key '${key}' not found. Check the ID in the HTML.`);
+                    allElementsFound = false;
+                }
+            }
+            if (!allElementsFound) {
+                const gridContainer = document.getElementById('timetable-grid') || document.body; // Fallback to body
+                gridContainer.innerHTML = '<p class="text-red-600 p-4 text-center font-bold">Error initializing page components. Essential elements missing. Please check console.</p>';
+                return; // Stop script execution
+            }
+            console.log("All required elements found.");
+
+            // --- Data Initialization ---
+            let courses, instructors, classrooms, schedules;
+            try {
+                courses = {{ courses_json | safe }};
+                instructors = {{ instructors_json | safe }};
+                classrooms = {{ classrooms_json | safe }};
+                schedules = {{ schedules_json | safe }};
+                if (![courses, instructors, classrooms, schedules].every(Array.isArray)) {
+                     throw new Error("One or more data sets from backend are not valid arrays.");
+                }
+                console.log("Backend data parsed successfully.");
+            } catch (e) {
+                console.error("Error parsing data from backend:", e);
+                elements.gridContainer.innerHTML = '<p class="text-red-600 p-4 text-center">Error loading initial schedule data. Check console.</p>';
+                return;
+            }
+
+            // --- Configuration ---
+            const daysOfWeek = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
+            const availableTimeSlots = [];
+            for (let hour = 7; hour < 20; hour++) { availableTimeSlots.push(`${String(hour).padStart(2, '0')}:00`); }
+            const gridTimeSlots = [];
+            for (let hour = 7; hour < 20; hour++) { gridTimeSlots.push(`${String(hour).padStart(2, '0')}:00`); }
+
+            // --- Prepare Lookup Table ---
+            const schedulesLookup = {};
+            daysOfWeek.forEach(day => {
+                schedulesLookup[day] = {};
+                gridTimeSlots.forEach(time => { schedulesLookup[day][time] = []; });
+            });
+            schedules.forEach(schedule => {
+                const gridStartTimeKey = schedule.start_time ? `${schedule.start_time.substring(0,2)}:00` : null;
+                if (schedule.day_of_week && daysOfWeek.includes(schedule.day_of_week) && gridStartTimeKey && schedulesLookup[schedule.day_of_week]?.[gridStartTimeKey]) {
+                    schedulesLookup[schedule.day_of_week][gridStartTimeKey].push(schedule);
+                }
+            });
+
+             // --- Toast Notification Function ---
+             const showToast = (message, type = 'info', duration = 4000) => {
+                 if (!elements.toastContainer) return;
+                 const toast = document.createElement('div'); toast.className = `toast toast-${type}`;
+                 let iconSvg = ''; /* ... icon svg definitions ... */
+                  if (type === 'success') iconSvg = '<svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"></path></svg>';
+                  else if (type === 'error') iconSvg = '<svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd"></path></svg>';
+                  else iconSvg = '<svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd"></path></svg>';
+
+                 toast.innerHTML = `<span class="toast-icon">${iconSvg}</span> <span class="toast-message">${message}</span> <button type="button" class="toast-close" aria-label="Close">×</button>`;
+                 elements.toastContainer.appendChild(toast);
+                 requestAnimationFrame(() => { toast.classList.add('show'); });
+                 const timer = setTimeout(() => { toast.classList.remove('show'); toast.addEventListener('transitionend', () => toast.remove(), { once: true }); }, duration);
+                 toast.querySelector('.toast-close').addEventListener('click', () => { clearTimeout(timer); toast.classList.remove('show'); toast.addEventListener('transitionend', () => toast.remove(), { once: true }); });
+             };
+
+            // --- Build Timetable Grid HTML ---
+            function buildTimetable() {
+                console.log("Building timetable grid...");
+                if (!elements.gridContainer) { console.error("buildTimetable: gridContainer not found!"); return; }
+                try {
+                    let gridHtml = `<div class="grid grid-cols-${daysOfWeek.length + 1} gap-px border border-gray-300 bg-gray-300">`;
+                    // Header Row
+                    gridHtml += `<div class="bg-gray-200 p-2 text-sm font-semibold text-center text-gray-600 sticky top-0 z-10">Time</div>`;
+                    daysOfWeek.forEach(day => { gridHtml += `<div class="bg-gray-200 p-2 text-sm font-semibold text-center text-gray-600 sticky top-0 z-10">${day}</div>`; });
+
+                    // Time Slot Rows
+                    gridTimeSlots.forEach(time => {
+                        gridHtml += `<div class="bg-gray-100 p-2 text-xs font-medium text-center text-gray-500 flex items-center justify-center timetable-cell">${time}</div>`;
+                        daysOfWeek.forEach(day => {
+                            gridHtml += `<div class="timetable-cell bg-white p-1 border-t border-l border-gray-200 relative overflow-y-auto" data-day="${day}" data-time="${time}">`;
+                            const entries = schedulesLookup[day]?.[time] || [];
+                            entries.forEach(entry => {
+                                let entryDataJson;
+                                try { entryDataJson = JSON.stringify({ id: entry.id, courseId: entry.course_id, instructorId: entry.instructor_id, classroomId: entry.classroom_id, dayOfWeek: entry.day_of_week, startTime: entry.start_time, endTime: entry.end_time }).replace(/"/g, '"'); } catch (e) { entryDataJson = '{}'; }
+                                gridHtml += `
+                                    <div class="schedule-entry" data-schedule='${entryDataJson}' data-schedule-id="${entry.id}">
+                                        <button type="button" class="delete-schedule-btn" aria-label="Delete entry"> <svg class="w-3 h-3" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd"></path></svg> </button>
+                                        <div class="edit-schedule-area pr-1"> {# Added padding-right to content area #}
+                                            <p class="font-semibold text-blue-800 text-[11px] leading-tight truncate" title="${entry.course_name || ''}">${entry.course_name || 'N/A'}</p>
+                                            <p class="text-gray-700 text-[10px] leading-tight truncate" title="${entry.instructor_name || ''}">${entry.instructor_name || 'N/A'}</p>
+                                            <p class="text-gray-600 text-[10px] leading-tight truncate" title="${entry.classroom_location || ''}">${entry.classroom_location || 'N/A'}</p>
+                                            <p class="text-gray-500 text-[9px] leading-tight">${entry.start_time || '?'} - ${entry.end_time || '?'}</p>
+                                        </div>
+                                    </div>`;
+                            });
+                            gridHtml += `</div>`; // Close cell div
+                        });
+                    });
+
+                    gridHtml += `</div>`; // Close grid div
+                    elements.gridContainer.innerHTML = gridHtml; // Update the DOM
+                    console.log("Timetable grid built successfully.");
+                } catch (error) {
+                    console.error("Error building timetable HTML:", error);
+                    elements.gridContainer.innerHTML = '<p class="text-red-600 p-4 text-center">Error displaying schedule grid.</p>';
+                }
+            }
+            buildTimetable(); // CALL IT
+
+
+            // --- Populate Select Options ---
+            function populateSelect(selectElement, data, valueField, textField, placeholder) {
+                if (!selectElement) return;
+                selectElement.options.length = 1; selectElement.options[0].text = placeholder || "-- Select --"; selectElement.options[0].value = "";
+                if (Array.isArray(data)) { data.forEach(item => { const option = document.createElement('option'); option.value = item[valueField]; option.textContent = item[textField]; selectElement.appendChild(option); }); }
+            }
+            populateSelect(elements.courseSelect, courses, 'id', 'name', '-- Select Course --');
+            populateSelect(elements.instructorSelect, instructors, 'id', 'name', '-- Select Instructor --');
+            populateSelect(elements.classroomSelect, classrooms, 'id', 'location', '-- No Classroom --');
+            function populateTimeSelect(selectElement, times, placeholder) {
+                 if (!selectElement) return;
+                 selectElement.options.length = 1; selectElement.options[0].text = placeholder; selectElement.options[0].value = "";
+                 times.forEach(time => { const option = document.createElement('option'); option.value = time; option.textContent = time; selectElement.appendChild(option); });
+            }
+            populateTimeSelect(elements.startTimeSelect, availableTimeSlots, '-- Select Start Time --');
+            populateTimeSelect(elements.endTimeSelect, availableTimeSlots, '-- Select End Time --');
+
+
+            // --- Modal State & Helper Functions ---
+            let currentMode = 'add'; let editId = null;
+            const closeModal = () => { if (!elements.modal) return; elements.modal.classList.add('hidden'); resetForm(); };
+            const resetForm = () => { if (elements.modalForm) { elements.modalForm.reset(); elements.courseSelect.value = ""; elements.instructorSelect.value = ""; elements.classroomSelect.value = ""; elements.daySelect.value = ""; elements.startTimeSelect.value = ""; elements.endTimeSelect.value = ""; } if(elements.errorArea) { elements.errorArea.classList.add('hidden'); elements.errorArea.textContent = ''; }};
+            const openModal = (mode, scheduleData = null) => {
+                 if (!elements.modal || !elements.modalForm || !elements.modalTitle || !elements.submitBtn) return;
+                 console.log("Opening modal. Mode:", mode, "Data:", scheduleData);
+                 currentMode = mode; resetForm();
+                 if (mode === 'add') {
+                     editId = null; elements.modalTitle.textContent = 'Add New Schedule Entry'; elements.modalForm.action = `{{ url_for('admin_manage_schedule_add') }}`; elements.submitBtn.textContent = 'Add Schedule';
+                 } else if (mode === 'edit' && scheduleData && typeof scheduleData === 'object') {
+                     editId = scheduleData.id; if (!editId) { console.error("Edit mode missing ID."); return; }
+                     elements.modalTitle.textContent = 'Edit Schedule Entry'; elements.modalForm.action = `./${editId}/edit`;
+                     elements.courseSelect.value = scheduleData.courseId || ''; elements.instructorSelect.value = scheduleData.instructorId || ''; elements.classroomSelect.value = scheduleData.classroomId || ''; elements.daySelect.value = scheduleData.dayOfWeek || ''; elements.startTimeSelect.value = scheduleData.startTime || ''; elements.endTimeSelect.value = scheduleData.endTime || '';
+                     elements.submitBtn.textContent = 'Update Schedule';
+                 } else { console.error("Invalid modal state."); return; }
+                 elements.modal.classList.remove('hidden');
+            };
+
+
+            // --- Function to Handle Deletion ---
+            const deleteScheduleEntry = (scheduleId, entryElement) => {
+                if (!scheduleId || !entryElement) return;
+                const deleteUrl = `./${scheduleId}/delete`; // Relative URL
+                console.log(`Attempting DELETE for schedule ID: ${scheduleId}`);
+
+                fetch(deleteUrl, {
+                    method: 'POST', // Using POST for delete as per route def
+                    headers: { 'Accept': 'application/json' /* Add CSRF if needed */ }
+                })
+                .then(response => {
+                    if (!response.ok) { // Check for 4xx, 5xx status
+                         return response.json().then(errData => {
+                             // Throw an error with message from backend JSON if available
+                             throw new Error(errData.message || `HTTP error ${response.status}`);
+                         }).catch(() => {
+                             // Fallback if error response wasn't JSON
+                             throw new Error(`HTTP error ${response.status}`);
+                         });
+                    }
+                    return response.json(); // Parse success JSON
+                })
+                .then(data => {
+                    if (data.success) {
+                        showToast(data.message || "Schedule deleted successfully.", 'success');
+                        entryElement.remove(); // Remove from grid
+                        // TODO: Remove from the 'schedules' array and update 'schedulesLookup' if needed
+                        // for now, visual removal is sufficient until next page load.
+                    } else {
+                         // Should be caught by !response.ok usually
+                         showToast(data.message || "Failed to delete schedule.", 'error');
+                    }
+                })
+                .catch(error => {
+                    console.error('Fetch error during delete:', error);
+                    showToast(`Error deleting schedule: ${error.message}`, 'error');
+                });
+            };
+
+
+            // --- Event Listeners ---
+            if(elements.addBtn) elements.addBtn.addEventListener('click', () => { openModal('add'); });
+
+            if(elements.gridContainer) {
+                elements.gridContainer.addEventListener('click', (event) => {
+                    const targetEntry = event.target.closest('.schedule-entry');
+                    if (!targetEntry) return;
+
+                    // Check if delete button was clicked
+                    if (event.target.closest('.delete-schedule-btn')) {
+                        const scheduleId = targetEntry.dataset.scheduleId;
+                        if (scheduleId && confirm(`Are you sure you want to delete schedule entry ID ${scheduleId}?`)) {
+                            deleteScheduleEntry(scheduleId, targetEntry); // Pass element too
+                        }
+                    // Check if edit area was clicked (prevent triggering on delete btn itself)
+                    } else if (event.target.closest('.edit-schedule-area') && targetEntry.dataset.schedule) {
+                        try {
+                            const scheduleData = JSON.parse(targetEntry.dataset.schedule.replace(/"/g, '"'));
+                            if (typeof scheduleData === 'object' && scheduleData !== null && scheduleData.id) {
+                                openModal('edit', scheduleData);
+                             } else { console.error("Parsed schedule data invalid:", scheduleData); }
+                        } catch (e) { console.error("Failed to parse schedule data:", e); }
+                    }
+                });
+            }
+
+            // Close modal listeners
+            if(elements.overlay) elements.overlay.addEventListener('click', closeModal);
+            if(elements.closeBtn) elements.closeBtn.addEventListener('click', closeModal);
+            if(elements.cancelBtn) elements.cancelBtn.addEventListener('click', closeModal);
+            if(elements.dialog) elements.dialog.addEventListener('click', (event) => { event.stopPropagation(); });
+            window.addEventListener('keydown', (event) => { if (elements.modal && !elements.modal.classList.contains('hidden') && event.key === 'Escape') { closeModal(); }});
+
+            // Modal Form Submit Listener with Validation
+             if (elements.modalForm) {
+                elements.modalForm.addEventListener('submit', (event) => {
+                    const start = elements.startTimeSelect.value;
+                    const end = elements.endTimeSelect.value;
+                    let isValid = true;
+                    let errorMsg = "";
+
+                    // Clear previous field errors
+                    elements.startTimeSelect.classList.remove('border-red-500');
+                    elements.endTimeSelect.classList.remove('border-red-500');
+                    elements.errorArea.classList.add('hidden');
+                    elements.errorArea.textContent = '';
+
+                    if (!start || !end) {
+                         isValid = false;
+                         errorMsg = "Start time and end time are required.";
+                         if (!start) elements.startTimeSelect.classList.add('border-red-500');
+                         if (!end) elements.endTimeSelect.classList.add('border-red-500');
+                    } else if (start >= end) {
+                         isValid = false;
+                         errorMsg = "End time must be after start time.";
+                         elements.startTimeSelect.classList.add('border-red-500');
+                         elements.endTimeSelect.classList.add('border-red-500');
+                    }
+                    // Add more field validations here (e.g., check if day/course/instructor selected)
+
+                    if (!isValid) {
+                         event.preventDefault(); // Stop submission
+                         elements.errorArea.textContent = errorMsg;
+                         elements.errorArea.classList.remove('hidden');
+                         console.log("Form validation failed:", errorMsg);
+                    } else {
+                        console.log("Form validation passed. Submitting...");
+                         // Allow standard form submission to proceed
+                    }
+                });
+             }
+
+             // --- Show Initial Toasts from Query Params ---
+             const showInitialToasts = () => {
+                 try {
+                     const urlParams = new URLSearchParams(window.location.search);
+                     const successMsg = urlParams.get('toast_success');
+                     const errorMsg = urlParams.get('toast_error');
+
+                     if (successMsg) showToast(decodeURIComponent(successMsg), 'success');
+                     if (errorMsg) showToast(decodeURIComponent(errorMsg), 'error');
+
+                     if (successMsg || errorMsg) {
+                         window.history.replaceState({}, document.title, window.location.pathname);
+                     }
+                 } catch(e) {
+                     console.error("Error processing initial toasts:", e);
+                 }
+             };
+             showInitialToasts();
+
+            console.log("Schedule Manager Initialization complete.");
+
+        }); // End DOMContentLoaded
+    } catch (globalError) {
+        console.error("A critical error occurred during page script initialization:", globalError);
+        const gridContainer = document.getElementById('timetable-grid');
+        if (gridContainer) { gridContainer.innerHTML = '<p class="text-red-600 p-4 text-center font-bold">A critical error occurred loading this page. Please check the console.</p>'; }
+    }
+</script>
+{% endblock %}

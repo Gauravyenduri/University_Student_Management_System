@@ -1,0 +1,270 @@
+{% extends "layout.html" %}
+{% block title %}Manage Scholarships{% endblock %}
+{% block page_title %}Manage Scholarship Definitions{% endblock %}
+
+{% block head_extra %}
+<style>
+    /* --- Basic Styles --- */
+    #toast-container { position: fixed; top: 1.5rem; right: 1.5rem; z-index: 100; display: flex; flex-direction: column; gap: 0.75rem; }
+    .toast { display: flex; align-items: center; padding: 0.75rem 1rem; border-radius: 0.5rem; box-shadow: 0 10px 15px -3px rgba(0,0,0,0.1), 0 4px 6px -2px rgba(0,0,0,0.05); border-width: 1px; min-width: 250px; max-width: 400px; opacity: 0; transform: translateX(100%); transition: opacity 0.3s ease-out, transform 0.3s ease-out; }
+    .toast.show { opacity: 1; transform: translateX(0); }
+    .toast-success { background-color: #dcfce7; border-color: #4ade80; color: #166534; }
+    .toast-error { background-color: #fee2e2; border-color: #f87171; color: #991b1b; }
+    .toast-icon { margin-right: 0.75rem; flex-shrink: 0; }
+    .toast-message { flex-grow: 1; font-size: 0.875rem; line-height: 1.25rem; word-break: break-word;}
+    .toast-close { margin-left: 1rem; background: transparent; border: none; color: inherit; opacity: 0.7; cursor: pointer; font-size: 1.2rem; line-height: 1;}
+    .toast-close:hover { opacity: 1; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div id="scholarship-def-manager-wrapper"> {# ID for JS scoping if needed #}
+     <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 gap-4">
+        <h2 class="text-2xl font-semibold text-gray-800">Scholarship Definitions</h2>
+         <div class="flex flex-col sm:flex-row gap-2"> {# Group buttons #}
+            <a href="{{ url_for('admin_manage_scholarship_assignments_list') }}" class="inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 whitespace-nowrap">
+                Manage Assignments
+            </a>
+            <button id="add-scholarship-btn" class="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 whitespace-nowrap">
+                Add New Definition
+            </button>
+         </div>
+    </div>
+
+     <div id="toast-container"></div> {# Toast container #}
+
+     {# Scholarship Definitions Table #}
+     <div class="bg-white p-4 md:p-6 rounded-lg shadow overflow-x-auto">
+         <table class="min-w-full divide-y divide-gray-200">
+             <thead class="bg-gray-50">
+                 <tr>
+                     <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">ID</th>
+                     <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Name</th>
+                     <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Amount</th>
+                     <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Eligibility/Description</th>
+                     <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+                 </tr>
+            </thead>
+             <tbody id="scholarship-table-body" class="bg-white divide-y divide-gray-200"> {# ID Needed #}
+                 {% if definitions %}
+                     {% for definition in definitions %}
+                     <tr>
+                         <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{{ definition.id }}</td>
+                         <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-800">{{ definition.name }}</td>
+                         <td class="px-6 py-4 whitespace-nowrap text-sm text-right text-gray-700">{{ "%.2f"|format(definition.amount | default(0.0)) }}</td>
+                         <td class="px-6 py-4 text-sm text-gray-600 max-w-md truncate" title="{{ definition.eligibility | default('', true) }}">{{ definition.eligibility | default('N/A') }}</td>
+                         <td class="px-6 py-4 whitespace-nowrap text-sm font-medium space-x-2">
+                            {# Edit Button with data attributes #}
+                            <button type="button" class="edit-scholarship-btn text-indigo-600 hover:text-indigo-900"
+                                    data-id="{{ definition.id }}"
+                                    data-name="{{ definition.name | e }}"
+                                    data-amount="{{ definition.amount | default('', true) }}"
+                                    data-eligibility="{{ definition.eligibility | default('', true) | e }}">
+                                Edit
+                            </button>
+                            {# Delete Form #}
+                            <form action="{{ url_for('admin_manage_scholarship_delete', scholarship_id=definition.id) }}" method="post" class="inline delete-scholarship-form">
+                                 <button type="submit" class="text-red-600 hover:text-red-900">Delete</button>
+                            </form>
+                         </td>
+                     </tr>
+                     {% endfor %}
+                 {% else %}
+                    <tr><td colspan="5" class="text-center py-4 text-gray-500">No scholarship definitions found.</td></tr>
+                 {% endif %}
+             </tbody>
+         </table>
+     </div>
+
+    {# Scholarship Definition Modal - Check IDs #}
+    <div id="scholarship-modal" class="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-0 hidden" aria-labelledby="modal-title" role="dialog" aria-modal="true">
+         <div id="modal-overlay" class="fixed inset-0 bg-black/50 backdrop-blur-sm" aria-hidden="true"></div>
+         <div id="modal-dialog" class="relative w-full max-w-lg overflow-hidden rounded-lg bg-white p-6 shadow-xl sm:my-8 sm:w-full sm:max-w-lg transform transition-all">
+             <div class="flex items-center justify-between pb-3 border-b">
+                 <h3 id="modal-title" class="text-lg font-semibold leading-6 text-gray-900">Modal Title</h3>
+                 <button id="modal-close-btn" type="button" class="p-1 rounded-full text-gray-400 hover:bg-gray-100 hover:text-gray-600 focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                    <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" aria-hidden="true"> <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" /> </svg>
+                </button>
+             </div>
+             <div class="mt-5">
+                 <div id="modal-error-area" class="hidden p-3 mb-4 text-sm text-red-700 bg-red-100 rounded-lg border border-red-300" role="alert"></div>
+                 <form id="modal-form" action="#" method="post" class="space-y-4">
+                     <div>
+                         <label for="modal-scholarship-name" class="block text-sm font-medium text-gray-700 mb-1">Name:</label>
+                         <input type="text" id="modal-scholarship-name" name="name" required
+                                class="appearance-none rounded-md relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm">
+                     </div>
+                     <div>
+                         <label for="modal-scholarship-amount" class="block text-sm font-medium text-gray-700 mb-1">Amount:</label>
+                         <input type="number" id="modal-scholarship-amount" name="amount_str" required min="0.01" step="0.01"
+                                class="appearance-none rounded-md relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm">
+                     </div>
+                     <div>
+                         <label for="modal-scholarship-eligibility" class="block text-sm font-medium text-gray-700 mb-1">Eligibility/Description (Optional):</label>
+                         <textarea id="modal-scholarship-eligibility" name="eligibility" rows="3"
+                                   class="appearance-none rounded-md relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"></textarea>
+                     </div>
+                     <div class="flex justify-end space-x-3 pt-4 border-t mt-4">
+                         <button id="modal-cancel-btn" type="button" class="px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"> Cancel </button>
+                         <button id="modal-submit-btn" type="submit" class="px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"> Submit </button>
+                     </div>
+                 </form>
+             </div>
+         </div>
+     </div>
+</div>
+
+<script>
+    try { // Global try-catch
+        document.addEventListener('DOMContentLoaded', () => {
+            console.log("DOM loaded. Initializing Scholarship Definition Manager...");
+
+            // --- Elements ---
+            const elements = {
+                modal: document.getElementById('scholarship-modal'),
+                overlay: document.getElementById('modal-overlay'),
+                dialog: document.getElementById('modal-dialog'),
+                modalTitle: document.getElementById('modal-title'),
+                modalForm: document.getElementById('modal-form'),
+                nameInput: document.getElementById('modal-scholarship-name'),
+                amountInput: document.getElementById('modal-scholarship-amount'),
+                eligibilityInput: document.getElementById('modal-scholarship-eligibility'),
+                errorArea: document.getElementById('modal-error-area'),
+                submitBtn: document.getElementById('modal-submit-btn'),
+                closeBtn: document.getElementById('modal-close-btn'),
+                cancelBtn: document.getElementById('modal-cancel-btn'),
+                addBtn: document.getElementById('add-scholarship-btn'),
+                tableBody: document.getElementById('scholarship-table-body'),
+                toastContainer: document.getElementById('toast-container')
+            };
+
+            // --- Element Check ---
+            let allElementsFound = true;
+            for (const [key, value] of Object.entries(elements)) {
+                if (!value) {
+                    console.error(`Scholarship Def Init Error: Element '${key}' not found.`);
+                    allElementsFound = false;
+                }
+            }
+             if (!allElementsFound) {
+                 const wrapper = document.getElementById('scholarship-def-manager-wrapper');
+                 if(wrapper) wrapper.innerHTML = '<p class="text-red-600 p-4 text-center font-bold">Error initializing page components. Check console.</p>';
+                 return;
+            }
+            console.log("All required scholarship definition elements found.");
+
+             // --- Toast Function ---
+            const showToast = (message, type = 'info', duration = 4000) => {
+                if (!elements.toastContainer) return;
+                const toast = document.createElement('div'); toast.className = `toast toast-${type}`;
+                let iconSvg = ''; /* ... icon svg definitions ... */
+                toast.innerHTML = `<span class="toast-icon">${iconSvg}</span> <span class="toast-message">${message}</span> <button type="button" class="toast-close" aria-label="Close">×</button>`;
+                elements.toastContainer.appendChild(toast);
+                requestAnimationFrame(() => { toast.classList.add('show'); });
+                const timer = setTimeout(() => { toast.classList.remove('show'); toast.addEventListener('transitionend', () => toast.remove(), { once: true }); }, duration);
+                toast.querySelector('.toast-close').addEventListener('click', () => { clearTimeout(timer); toast.classList.remove('show'); toast.addEventListener('transitionend', () => toast.remove(), { once: true }); });
+            };
+
+            // --- Modal State & Helpers ---
+            let currentMode = 'add'; let editId = null;
+            const closeModal = () => { if(elements.modal) elements.modal.classList.add('hidden'); resetForm(); };
+            const resetForm = () => {
+                 if (elements.modalForm) {
+                     elements.modalForm.reset();
+                 }
+                 if (elements.errorArea) {
+                     elements.errorArea.classList.add('hidden'); elements.errorArea.textContent = '';
+                 }
+                 // Clear validation styles if any
+                 document.querySelectorAll(`#${elements.modalForm?.id} .border-red-500`).forEach(el => el.classList.remove('border-red-500'));
+            };
+
+            const openModal = (mode, data = null) => {
+                if (!elements.modal || !elements.modalForm || !elements.modalTitle || !elements.submitBtn) return;
+                currentMode = mode; resetForm();
+
+                if (mode === 'add') {
+                    editId = null; elements.modalTitle.textContent = 'Add Scholarship Definition';
+                    elements.modalForm.action = `{{ url_for('admin_manage_scholarship_add') }}`; // Correct endpoint
+                    elements.submitBtn.textContent = 'Add Definition';
+                } else if (mode === 'edit' && data) {
+                    editId = data.id; if (!editId) return;
+                    elements.modalTitle.textContent = 'Edit Scholarship Definition';
+                    elements.modalForm.action = `/admin/scholarships/definitions/${editId}/edit`; // Relative path for edit
+                    elements.nameInput.value = data.name || '';
+                    elements.amountInput.value = data.amount || '';
+                    elements.eligibilityInput.value = data.eligibility || '';
+                    elements.submitBtn.textContent = 'Update Definition';
+                } else { return; }
+                elements.modal.classList.remove('hidden');
+            };
+
+            // --- Delete Handler ---
+             const handleDelete = (formElement) => {
+                const url = formElement.action;
+                fetch(url, { method: 'POST', headers: { 'Accept': 'application/json' /* CSRF? */ }})
+                .then(response => response.ok ? response.json() : response.json().then(err => Promise.reject(err)))
+                .then(data => {
+                    if (data.success) {
+                        showToast(data.message || 'Definition deleted.', 'success');
+                        formElement.closest('tr').remove();
+                    } else { showToast(data.message || 'Failed to delete.', 'error'); }
+                })
+                .catch(error => { showToast(`Error: ${error.message || 'Could not delete definition.'}`, 'error'); });
+             };
+
+            // --- Event Listeners ---
+            if(elements.addBtn) elements.addBtn.addEventListener('click', () => openModal('add'));
+
+            if(elements.tableBody) {
+                elements.tableBody.addEventListener('click', (event) => {
+                    const editButton = event.target.closest('.edit-scholarship-btn');
+                    const deleteForm = event.target.closest('.delete-scholarship-form');
+                    if (editButton) {
+                         const data = { // Read from data attributes
+                             id: editButton.dataset.id, name: editButton.dataset.name,
+                             amount: editButton.dataset.amount, eligibility: editButton.dataset.eligibility
+                         };
+                         openModal('edit', data);
+                    } else if (deleteForm) {
+                         event.preventDefault();
+                         if(confirm('Are you sure you want to delete this scholarship definition? This cannot be undone if assigned.')) {
+                             handleDelete(deleteForm);
+                         }
+                    }
+                 });
+             }
+            // Ensure close listeners are attached correctly
+            if(elements.overlay) elements.overlay.addEventListener('click', closeModal);
+            if(elements.closeBtn) elements.closeBtn.addEventListener('click', closeModal);
+            if(elements.cancelBtn) elements.cancelBtn.addEventListener('click', closeModal);
+            if(elements.dialog) elements.dialog.addEventListener('click', (event) => { event.stopPropagation(); });
+            window.addEventListener('keydown', (event) => { if (elements.modal && !elements.modal.classList.contains('hidden') && event.key === 'Escape') { closeModal(); }});
+
+             // Optional: Client-side form validation
+             if(elements.modalForm) {
+                  elements.modalForm.addEventListener('submit', (event) => {
+                      let isValid = true; let errorMsg = "";
+                       // Example: Check amount
+                       if (!elements.amountInput.value || parseFloat(elements.amountInput.value) <= 0) {
+                           isValid = false; errorMsg = "Amount must be a positive number.";
+                           elements.amountInput.classList.add('border-red-500');
+                       } else { elements.amountInput.classList.remove('border-red-500');}
+                       // Add more validation...
+
+                       if (!isValid) { event.preventDefault(); elements.errorArea.textContent = errorMsg; elements.errorArea.classList.remove('hidden'); }
+                       else { elements.errorArea.classList.add('hidden'); }
+                  });
+             }
+
+            // --- Show Initial Toasts ---
+            const showInitialToasts = () => {
+                try { const urlParams = new URLSearchParams(window.location.search); const s = urlParams.get('toast_success'); const e = urlParams.get('toast_error'); if(s) showToast(decodeURIComponent(s),'success'); if(e) showToast(decodeURIComponent(e),'error'); if(s||e) window.history.replaceState({}, document.title, window.location.pathname); } catch(e) { console.error("Toast error", e); }
+            };
+            showInitialToasts();
+
+            console.log("Scholarship Definition Manager Initialized.");
+        }); // End DOMContentLoaded
+    } catch(globalError) { console.error("Global JS Error:", globalError); }
+</script>
+{% endblock %}

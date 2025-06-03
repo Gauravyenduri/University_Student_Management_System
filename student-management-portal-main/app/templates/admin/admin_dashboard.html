@@ -1,0 +1,68 @@
+{% extends "layout.html" %}
+
+{% block title %}Admin Dashboard{% endblock %}
+
+{% block page_title %}Admin Dashboard{% endblock %}
+
+{% block content %}
+<div class="bg-white p-6 rounded-lg shadow mb-6">
+    <h2 class="text-2xl font-semibold text-gray-800 mb-4">Welcome, {{ user.username }}!</h2>
+    <p class="text-gray-600">Admin Control Panel.</p>
+</div>
+
+<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+    <!-- Student Management Card -->
+    <div class="bg-white p-4 rounded-lg shadow hover:shadow-lg transition-shadow duration-200">
+        <h3 class="text-lg font-semibold text-gray-700 mb-2">Manage Students</h3>
+        <p class="text-gray-600 text-sm mb-3">View, add, edit, or remove student records and accounts.</p>
+        <a href="{{ url_for('admin_manage_students_list') }}" class="text-blue-600 hover:underline text-sm font-medium">Go to Students →</a>
+    </div>
+
+    <!-- Add other admin cards here (Instructors, Courses, etc.) -->
+    <div class="bg-white p-4 rounded-lg shadow hover:shadow-lg transition-shadow duration-200">
+        <h3 class="text-lg font-semibold text-gray-700 mb-2">Manage Instructors</h3>
+        <p class="text-gray-600 text-sm mb-3">View, add, edit, or remove instructor records and accounts.</p> {# Updated description #}
+        <a href="{{ url_for('admin_manage_instructors_list') }}" class="text-blue-600 hover:underline text-sm font-medium">Go to Instructors →</a> {# Updated link #}
+    </div>
+    <div class="bg-white p-4 rounded-lg shadow hover:shadow-lg transition-shadow duration-200">
+        <h3 class="text-lg font-semibold text-gray-700 mb-2">Manage Departments</h3>
+        <p class="text-gray-600 text-sm mb-3">Add, edit, or delete academic departments.</p>
+        <a href="{{ url_for('admin_manage_departments_list') }}" class="text-blue-600 hover:underline text-sm font-medium">Go to Departments →</a>
+    </div>
+    <div class="bg-white p-4 rounded-lg shadow hover:shadow-lg transition-shadow duration-200">
+        <h3 class="text-lg font-semibold text-gray-700 mb-2">Manage Courses</h3>
+        <p class="text-gray-600 text-sm mb-3">Define course details, credits, and descriptions.</p> {# Updated description #}
+        <a href="{{ url_for('admin_manage_courses_list') }}" class="text-blue-600 hover:underline text-sm font-medium">Go to Courses →</a> {# Updated link #}
+    </div>
+    <div class="bg-white p-4 rounded-lg shadow hover:shadow-lg transition-shadow duration-200">
+        <h3 class="text-lg font-semibold text-gray-700 mb-2">Manage Classrooms</h3>
+        <p class="text-gray-600 text-sm mb-3">Define classroom locations and capacities.</p>
+        <a href="{{ url_for('admin_manage_classrooms_list') }}" class="text-blue-600 hover:underline text-sm font-medium">Go to Classrooms →</a>
+    </div>
+    <div class="bg-white p-4 rounded-lg shadow hover:shadow-lg transition-shadow duration-200">
+        <h3 class="text-lg font-semibold text-gray-700 mb-2">Manage Schedules</h3>
+        <p class="text-gray-600 text-sm mb-3">Create and modify course schedules.</p>
+        <a href="{{ url_for('admin_manage_schedules_list') }}" class="text-blue-600 hover:underline text-sm font-medium">Go to Schedules →</a>
+    </div>
+    <div class="bg-white p-4 rounded-lg shadow hover:shadow-lg transition-shadow duration-200">
+        <h3 class="text-lg font-semibold text-gray-700 mb-2">Manage Fees</h3>
+        <p class="text-gray-600 text-sm mb-3">Track student fee records and payments.</p>
+        <a href="{{ url_for('admin_manage_fees_list') }}" class="text-blue-600 hover:underline text-sm font-medium">Go to Fees →</a>
+    </div>
+    <div class="bg-white p-4 rounded-lg shadow hover:shadow-lg transition-shadow duration-200">
+        <h3 class="text-lg font-semibold text-gray-700 mb-2">Manage Scholarships</h3>
+        <p class="text-gray-600 text-sm mb-3">Define scholarships and assign them to students.</p>
+        <a href="{{ url_for('admin_manage_scholarships_list') }}" class="text-blue-600 hover:underline text-sm font-medium">Go to Scholarships →</a>
+    </div>
+    <div class="bg-white p-4 rounded-lg shadow hover:shadow-lg transition-shadow duration-200">
+        <h3 class="text-lg font-semibold text-gray-700 mb-2">Manage Library Records</h3>
+        <p class="text-gray-600 text-sm mb-3">Track student book borrowing status.</p>
+        <a href="{{ url_for('admin_manage_library_records') }}" class="text-blue-600 hover:underline text-sm font-medium">Go to Library Records →</a>
+    </div>
+    <div class="bg-white p-4 rounded-lg shadow hover:shadow-lg transition-shadow duration-200">
+        <h3 class="text-lg font-semibold text-gray-700 mb-2">Manage Clubs</h3>
+        <p class="text-gray-600 text-sm mb-3">Create and manage student clubs and activities.</p>
+        <a href="{{ url_for('admin_manage_clubs') }}" class="text-blue-600 hover:underline text-sm font-medium">Go to Clubs →</a>
+    </div>
+</div>
+{% endblock %}

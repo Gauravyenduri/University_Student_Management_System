@@ -1,0 +1,104 @@
+{% extends "layout.html" %}
+{% block title %}My Library Records{% endblock %}
+{% block page_title %}My Library Records{% endblock %}
+
+{% block head_extra %}
+<style>
+    .overdue {
+        color: #dc2626; /* red-600 */
+        font-weight: 600; /* font-semibold */
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+ <div class="space-y-6">
+
+    <div class="flex justify-between items-center mb-6">
+        <h2 class="text-2xl font-semibold text-gray-800">My Library Borrowing History</h2>
+        {# Placeholder for any summary info if needed #}
+    </div>
+
+    {# Display errors if any occurred fetching data #}
+    {% if error_message %}
+        <div class="p-4 mb-4 text-sm text-red-700 bg-red-100 rounded-lg border border-red-300" role="alert">
+            {{ error_message }}
+        </div>
+    {% endif %}
+
+    {# Library Records Table #}
+    <div class="bg-white p-4 md:p-6 rounded-lg shadow border border-gray-200 overflow-x-auto">
+         <div class="overflow-x-auto">
+             <table class="min-w-full divide-y divide-gray-200">
+                <thead class="bg-gray-50">
+                    <tr>
+                        {# Decide which fields are most relevant to the student #}
+                        {# Maybe hide Record ID? #}
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Books Currently Borrowed</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Last Borrowed Date</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Due/Return Date</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                    </tr>
+                </thead>
+                 <tbody class="bg-white divide-y divide-gray-200">
+                      {% if library_records %}
+                         {% block scripts_extra %}
+                         <script>
+                             document.addEventListener('DOMContentLoaded', function() {
+                                 const today = new Date();
+                                 today.setHours(0, 0, 0, 0);
+                                
+                                 document.querySelectorAll('tr[data-return-date]').forEach(row => {
+                                     const returnDateStr = row.getAttribute('data-return-date');
+                                     const booksBorrowed = parseInt(row.getAttribute('data-books-borrowed') || '0');
+                                     
+                                     if (returnDateStr && booksBorrowed > 0) {
+                                         const returnDate = new Date(returnDateStr);
+                                         returnDate.setHours(0, 0, 0, 0);
+                                         
+                                         if (returnDate < today) {
+                                             row.querySelector('.return-date').classList.add('overdue');
+                                             row.querySelector('.status-badge').classList.remove('bg-yellow-100', 'text-yellow-800');
+                                             row.querySelector('.status-badge').classList.add('bg-red-100', 'text-red-800');
+                                             row.querySelector('.status-badge').innerHTML = 'Borrowed (Overdue)';
+                                         }
+                                     }
+                                 });
+                             });
+                         </script>
+                         {% endblock %}
+                         {% for record in library_records %}
+                          <tr data-return-date="{{ record.return_date.strftime('%Y-%m-%d') if record.return_date else '' }}" 
+                              data-books-borrowed="{{ record.books_borrowed }}">
+                              <td class="px-6 py-4 whitespace-nowrap text-sm text-center font-medium text-gray-900">{{ record.books_borrowed }}</td>
+                              <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-600">{{ record.borrowed_date.strftime('%Y-%m-%d') if record.borrowed_date else 'N/A' }}</td>
+                              <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-600 return-date">
+                                  {{ record.return_date.strftime('%Y-%m-%d') if record.return_date else 'N/A' }}
+                              </td>
+                              <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
+                                  {% if record.books_borrowed > 0 %}
+                                      <span class="status-badge px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-yellow-100 text-yellow-800">
+                                          Borrowed
+                                      </span>
+                                  {% elif record.return_date %}
+                                      <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">
+                                          Returned
+                                      </span>
+                                  {% else %}
+                                      <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-gray-100 text-gray-800">
+                                          No Activity
+                                      </span>
+                                  {% endif %}
+                              </td>
+                          </tr>
+                         {% endfor %}
+                      {% else %}
+                         <tr><td colspan="4" class="text-center py-4 text-gray-500">You have no library borrowing records.</td></tr> {# Adjust colspan #}
+                      {% endif %}
+                 </tbody>
+             </table>
+         </div>
+    </div> {# End Table container #}
+
+</div> {# End Main Content Wrapper #}
+{% endblock %}

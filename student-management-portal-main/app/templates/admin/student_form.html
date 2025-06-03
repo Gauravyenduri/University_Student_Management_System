@@ -1,0 +1,111 @@
+{% extends "layout.html" %}
+
+{% block title %}{{ 'Edit Student' if student else 'Add New Student' }}{% endblock %}
+
+{% block page_title %}{{ 'Edit Student: ' + student.name if student else 'Add New Student' }}{% endblock %}
+
+{% block content %}
+    {# Remove max-w-2xl and mx-auto from this container div #}
+    {# Let it naturally fill the width provided by the layout's main content area #}
+    <div class="bg-white p-6 md:p-8 rounded-lg shadow">
+        <h2 class="text-2xl font-semibold text-gray-800 mb-6">{{ 'Edit Student Information' if student else 'Add New Student' }}</h2>
+
+        {% if error %}
+        <div class="p-4 mb-4 text-sm text-red-700 bg-red-100 rounded-lg border border-red-300" role="alert">
+            {{ error }}
+        </div>
+        {% endif %}
+
+        {% set form_action = url_for('admin_manage_student_add') if not student else url_for('admin_manage_student_edit', student_id=student.id) %}
+        {% set current_data = form_data if form_data else student %}
+
+        {# The form itself doesn't need width constraints here #}
+        <form action="{{ form_action }}" method="post" class="space-y-6">
+            {# Student Details Fieldset #}
+            <fieldset class="border p-4 rounded">
+                <legend class="text-lg font-semibold px-2 text-gray-700">Student Details</legend>
+                 <div class="grid grid-cols-1 md:grid-cols-2 gap-6"> {# Use grid for better layout #}
+                    <div>
+                        <label for="name" class="block text-sm font-medium text-gray-700 mb-1">Full Name:</label>
+                        <input type="text" id="name" name="name" required value="{{ current_data.name if current_data }}"
+                               class="appearance-none rounded-md relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 sm:text-sm">
+                    </div>
+                     <div>
+                        <label for="dob" class="block text-sm font-medium text-gray-700 mb-1">Date of Birth:</label>
+                        <input type="date" id="dob" name="dob" value="{{ (current_data.dob if current_data and current_data.dob else '') }}"
+                               class="appearance-none rounded-md relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 sm:text-sm">
+                    </div>
+                     <div>
+                        <label for="phone" class="block text-sm font-medium text-gray-700 mb-1">Phone:</label>
+                        <input type="tel" id="phone" name="phone" value="{{ current_data.phone if current_data }}"
+                               class="appearance-none rounded-md relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 sm:text-sm">
+                    </div>
+                    <div class="md:col-span-2"> {# Address can span full width on medium screens #}
+                        <label for="address" class="block text-sm font-medium text-gray-700 mb-1">Address:</label>
+                        <textarea id="address" name="address" rows="3"
+                                  class="appearance-none rounded-md relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 sm:text-sm">{{ current_data.address if current_data }}</textarea>
+                    </div>
+                    {# Department Dropdown #}
+                    <div>
+                        <label for="department_id" class="block text-sm font-medium text-gray-700 mb-1">Department:</label>
+                        <select id="department_id" name="department_id"
+                                class="appearance-none rounded-md relative block w-full px-3 py-2 border border-gray-300 bg-white text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 sm:text-sm">
+                            <option value="">-- Select Department (Optional) --</option>
+                            {% for dept in departments %}
+                                <option value="{{ dept.id }}" {% if current_data and current_data.department_id == dept.id %}selected{% endif %}>
+                                    {{ dept.name }}
+                                </option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                </div>
+            </fieldset>
+
+             {# User Account Details Fieldset #}
+            <fieldset class="border p-4 rounded">
+                 <legend class="text-lg font-semibold px-2 text-gray-700">User Account</legend>
+                  <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                     {% if not student %}
+                     <div>
+                        <label for="username" class="block text-sm font-medium text-gray-700 mb-1">Username:</label>
+                        <input type="text" id="username" name="username" required value="{{ current_data.username if current_data }}"
+                               class="appearance-none rounded-md relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 sm:text-sm">
+                         <p class="mt-1 text-xs text-gray-500">Cannot be changed after creation.</p>
+                    </div>
+                     {% else %}
+                      <div>
+                         <label class="block text-sm font-medium text-gray-700 mb-1">Username:</label>
+                         <input type="text" value="{{ student.user.username if student.user else 'N/A' }}" disabled
+                                class="appearance-none rounded-md relative block w-full px-3 py-2 border border-gray-300 bg-gray-100 text-gray-500 sm:text-sm">
+                      </div>
+                     {% endif %}
+
+                    <div>
+                        <label for="email" class="block text-sm font-medium text-gray-700 mb-1">Email Address:</label>
+                        <input type="email" id="email" name="email" required value="{{ (current_data.email if form_data else student.user.email) if (form_data or student.user) else '' }}"
+                               class="appearance-none rounded-md relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 sm:text-sm">
+                    </div>
+                 </div> {# End grid #}
+
+                {% if not student %}
+                 <div class="mt-4 text-sm text-gray-600">
+                    A default password will be assigned. The student should change it upon first login.
+                    (Default: <code>{{ default_password_info }}</code>)
+                 </div>
+                {% endif %}
+             </fieldset>
+
+            {# Action Buttons #}
+            <div class="flex justify-end space-x-3 pt-4">
+                 <a href="{{ url_for('admin_manage_students_list') }}"
+                    class="px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
+                     Cancel
+                 </a>
+                <button type="submit"
+                        class="px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
+                    {{ 'Update Student' if student else 'Add Student' }}
+                </button>
+            </div>
+        </form> {# End Form #}
+    </div> {# End Content Container #}
+{% endblock %}

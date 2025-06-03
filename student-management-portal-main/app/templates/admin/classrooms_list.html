@@ -1,0 +1,223 @@
+{% extends "layout.html" %}
+
+{% block title %}Manage Classrooms{% endblock %}
+{% block page_title %}Manage Classrooms{% endblock %}
+
+{% block content %}
+{# Plain JS component scope for the page #}
+<div id="classroom-manager-wrapper">
+
+    {# Header with Add button #}
+    <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 gap-4">
+        <h2 class="text-2xl font-semibold text-gray-800">Classroom List</h2>
+        <button id="add-classroom-btn"
+           class="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition duration-150 whitespace-nowrap">
+           Add New Classroom
+        </button>
+    </div>
+
+    {# Classroom List Table #}
+    <div class="bg-white p-4 md:p-6 rounded-lg shadow overflow-x-auto">
+        <table class="min-w-full divide-y divide-gray-200">
+            <thead class="bg-gray-50">
+                <tr>
+                    <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">ID</th>
+                    <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Location</th>
+                    <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Capacity</th>
+                    <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+                </tr>
+            </thead>
+            {# === CORRECTION START === #}
+            {# ALWAYS render tbody, even if empty, for the event listener #}
+            <tbody id="classroom-table-body" class="bg-white divide-y divide-gray-200">
+                {% if classrooms %}
+                    {% for room in classrooms %}
+                    <tr>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{{ room.id }}</td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-700">{{ room.location }}</td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{{ room.capacity | default('N/A') }}</td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm font-medium space-x-2">
+                            {# Edit Button: Use data-* attributes #}
+                            <button type="button"
+                                    class="edit-classroom-btn text-indigo-600 hover:text-indigo-900" {# Add class #}
+                                    data-classroom-id="{{ room.id }}"
+                                    data-classroom-location="{{ room.location | e }}"
+                                    data-classroom-capacity="{{ room.capacity if room.capacity is not none else '' }}">
+                                Edit
+                            </button>
+
+                            {# Delete form #}
+                            <form action="{{ url_for('admin_manage_classroom_delete', classroom_id=room.id) }}" method="post" class="inline" onsubmit="return confirm('Are you sure you want to delete classroom \'{{ room.location | e }}\'? This cannot be undone if it is used in schedules.');">
+                                 <button type="submit" class="text-red-600 hover:text-red-900">Delete</button>
+                            </form>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                {% else %}
+                    {# Display message within the table structure if empty #}
+                     <tr>
+                         {# Adjust colspan based on the number of columns (4 in this case) #}
+                         <td colspan="4" class="px-6 py-4 text-center text-gray-500">
+                             No classrooms found.
+                         </td>
+                     </tr>
+                {% endif %}
+            </tbody>
+             {# === CORRECTION END === #}
+        </table>
+        {# REMOVED the separate <p> tag for 'No classrooms found' #}
+    </div> {# End table container #}
+
+
+    {# Modal Structure - Add IDs, initially hidden #}
+    <div id="classroom-modal" {# Add ID #}
+         class="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-0 hidden" {# Initially hidden #}
+         aria-labelledby="modal-title" role="dialog" aria-modal="true">
+
+        <!-- Overlay -->
+        <div id="modal-overlay" class="fixed inset-0 bg-black/50 backdrop-blur-sm" aria-hidden="true"></div>
+
+        <!-- Modal Dialog -->
+        <div id="modal-dialog" class="relative w-full max-w-md overflow-hidden rounded-lg bg-white p-6 shadow-xl sm:my-8 sm:w-full sm:max-w-md transform transition-all"> {# Max width md #}
+
+            <!-- Modal Header -->
+            <div class="flex items-center justify-between pb-3 border-b">
+                <h3 id="modal-title" class="text-lg font-semibold leading-6 text-gray-900"></h3> {# Add ID #}
+                <button id="modal-close-btn" type="button" class="p-1 rounded-full text-gray-400 hover:bg-gray-100 hover:text-gray-600 focus:outline-none focus:ring-2 focus:ring-indigo-500"> {# Add ID #}
+                    <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" aria-hidden="true"> <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" /> </svg>
+                </button>
+            </div>
+
+            <!-- Modal Body (Form) -->
+            <div class="mt-5">
+                 <div id="modal-error-area" class="hidden p-3 mb-4 text-sm text-red-700 bg-red-100 rounded-lg border border-red-300" role="alert"></div>
+
+                {# Form - Add ID #}
+                <form id="modal-form" action="#" method="post" class="space-y-4">
+                    {# Classroom Location #}
+                    <div>
+                        <label for="modal-classroom-location" class="block text-sm font-medium text-gray-700 mb-1">Location:</label>
+                        <input type="text" id="modal-classroom-location" name="location" required
+                               class="appearance-none rounded-md relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 sm:text-sm">
+                    </div>
+                    {# Classroom Capacity #}
+                     <div>
+                        <label for="modal-classroom-capacity" class="block text-sm font-medium text-gray-700 mb-1">Capacity (Optional):</label>
+                        <input type="number" id="modal-classroom-capacity" name="capacity_str" min="0" step="1"
+                               class="appearance-none rounded-md relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 sm:text-sm">
+                    </div>
+
+                    {# Modal Footer (Action Buttons) #}
+                    <div class="flex justify-end space-x-3 pt-4 border-t mt-4">
+                         <button id="modal-cancel-btn" type="button" {# Add ID #}
+                            class="px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
+                             Cancel
+                         </button>
+                        <button id="modal-submit-btn" type="submit" {# Add ID #}
+                                class="px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
+                            Submit {# Text changed by JS #}
+                        </button>
+                    </div>
+                </form>
+            </div> {# End Modal Body #}
+        </div> {# End Modal Dialog #}
+    </div> {# End Modal Structure #}
+</div> {# End wrapper div #}
+
+{# Plain JavaScript Logic #}
+<script>
+    document.addEventListener('DOMContentLoaded', () => {
+
+        // --- Get DOM Elements ---
+        const elements = {
+            modal: document.getElementById('classroom-modal'),
+            overlay: document.getElementById('modal-overlay'),
+            dialog: document.getElementById('modal-dialog'),
+            title: document.getElementById('modal-title'),
+            form: document.getElementById('modal-form'),
+            locationInput: document.getElementById('modal-classroom-location'),
+            capacityInput: document.getElementById('modal-classroom-capacity'),
+            errorArea: document.getElementById('modal-error-area'),
+            submitBtn: document.getElementById('modal-submit-btn'),
+            closeBtn: document.getElementById('modal-close-btn'),
+            cancelBtn: document.getElementById('modal-cancel-btn'),
+            addBtn: document.getElementById('add-classroom-btn'),
+            tableBody: document.getElementById('classroom-table-body') // This ID must exist now
+        };
+
+        // Check if all essential elements were found
+        const missingElement = Object.entries(elements).find(([key, value]) => !value);
+        if (missingElement) {
+            console.error(`Classroom Modal init failed: Element with presumed ID for key '${missingElement[0]}' not found.`);
+            console.log("Retrieved elements:", elements); // Log retrieved elements for debugging
+            return; // Stop execution
+        }
+
+        // --- Modal State & Helper Functions ---
+        let currentMode = 'add'; // 'add' or 'edit'
+        let editId = null;
+
+        const closeModal = () => {
+            elements.modal.classList.add('hidden');
+            resetForm();
+        };
+
+        const resetForm = () => {
+            elements.form.reset(); // Resets native form elements
+            elements.errorArea.classList.add('hidden');
+            elements.errorArea.textContent = '';
+        };
+
+        const openModal = (mode, classroomData = null) => {
+            currentMode = mode;
+            resetForm();
+
+            if (mode === 'add') {
+                editId = null;
+                elements.title.textContent = 'Add New Classroom';
+                elements.form.action = `{{ url_for('admin_manage_classroom_add') }}`;
+                elements.submitBtn.textContent = 'Add Classroom';
+            } else if (mode === 'edit' && classroomData) {
+                editId = classroomData.id;
+                elements.title.textContent = 'Edit Classroom';
+                elements.form.action = `/admin/classrooms/${editId}/edit`;
+                elements.locationInput.value = classroomData.location || '';
+                elements.capacityInput.value = classroomData.capacity || ''; // Capacity is string or empty
+                elements.submitBtn.textContent = 'Update Classroom';
+            } else {
+                console.error("Cannot open modal: Invalid mode or missing data for edit.");
+                return;
+            }
+            elements.modal.classList.remove('hidden');
+        };
+
+        // --- Event Listeners ---
+        elements.addBtn.addEventListener('click', () => { openModal('add'); });
+
+        // Edit button listener (event delegation)
+        elements.tableBody.addEventListener('click', (event) => {
+            const targetButton = event.target.closest('.edit-classroom-btn');
+            if (targetButton) {
+                const classroomData = {
+                    id: targetButton.dataset.classroomId,
+                    location: targetButton.dataset.classroomLocation,
+                    capacity: targetButton.dataset.classroomCapacity // String or empty
+                };
+                openModal('edit', classroomData);
+            }
+        });
+
+        // Close modal listeners
+        elements.overlay.addEventListener('click', closeModal);
+        elements.closeBtn.addEventListener('click', closeModal);
+        elements.cancelBtn.addEventListener('click', closeModal);
+        elements.dialog.addEventListener('click', (event) => { event.stopPropagation(); });
+        window.addEventListener('keydown', (event) => {
+            if (event.key === 'Escape' && !elements.modal.classList.contains('hidden')) {
+                closeModal();
+            }
+        });
+
+    }); // End DOMContentLoaded
+</script>
+{% endblock %}

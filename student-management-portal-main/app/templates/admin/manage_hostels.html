@@ -1,0 +1,329 @@
+{% extends "layout.html" %}
+{% block title %}Manage Hostels{% endblock %}
+{% block page_title %}Manage Hostel Assignments{% endblock %}
+
+{% block head_extra %}
+<style>
+    /* --- Basic Styles (Toast, Forms, Buttons) --- */
+    #toast-container { position: fixed; top: 1.5rem; right: 1.5rem; z-index: 100; display: flex; flex-direction: column; gap: 0.75rem; }
+    .toast { display: flex; align-items: center; padding: 0.75rem 1rem; border-radius: 0.5rem; box-shadow: 0 10px 15px -3px rgba(0,0,0,0.1), 0 4px 6px -2px rgba(0,0,0,0.05); border-width: 1px; min-width: 250px; max-width: 400px; opacity: 0; transform: translateX(100%); transition: opacity 0.3s ease-out, transform 0.3s ease-out; pointer-events: none; }
+    .toast.show { opacity: 1; transform: translateX(0); pointer-events: auto; }
+    .toast-success { background-color: #dcfce7; border-color: #4ade80; color: #166534; }
+    .toast-error { background-color: #fee2e2; border-color: #f87171; color: #991b1b; }
+    .toast-icon { margin-right: 0.75rem; flex-shrink: 0; }
+    .toast-message { flex-grow: 1; font-size: 0.875rem; line-height: 1.25rem; word-break: break-word;}
+    .toast-close { margin-left: 1rem; background: transparent; border: none; color: inherit; opacity: 0.7; cursor: pointer; font-size: 1.2rem; line-height: 1;}
+    .toast-close:hover { opacity: 1; }
+
+    .form-input, .form-select { appearance: none; border-radius: 0.375rem; position: relative; display: block; width: 100%; padding-left: 0.75rem; padding-right: 0.75rem; padding-top: 0.5rem; padding-bottom: 0.5rem; border-width: 1px; border-color: #d1d5db; --tw-shadow: 0 0 #0000; box-shadow: var(--tw-ring-offset-shadow, 0 0 #0000), var(--tw-ring-shadow, 0 0 #0000), var(--tw-shadow); placeholder-color: #6b7280; color: #111827; }
+    .form-input:focus, .form-select:focus { outline: 2px solid transparent; outline-offset: 2px; z-index: 10; --tw-ring-color: #3b82f6; border-color: #3b82f6; --tw-ring-offset-shadow: var(--tw-ring-inset) 0 0 0 var(--tw-ring-offset-width) var(--tw-ring-offset-color); --tw-ring-shadow: var(--tw-ring-inset) 0 0 0 calc(1px + var(--tw-ring-offset-width)) var(--tw-ring-color); box-shadow: var(--tw-ring-offset-shadow), var(--tw-ring-shadow), var(--tw-shadow, 0 0 #0000); }
+    .form-select { background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%236b7280' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M6 8l4 4 4-4'/%3e%3c/svg%3e"); background-position: right 0.5rem center; background-repeat: no-repeat; background-size: 1.5em 1.5em; padding-right: 2.5rem; }
+
+    .btn { display: inline-flex; align-items: center; justify-content: center; padding-left: 1rem; padding-right: 1rem; padding-top: 0.5rem; padding-bottom: 0.5rem; border-width: 1px; border-color: transparent; font-size: 0.875rem; line-height: 1.25rem; font-weight: 500; border-radius: 0.375rem; --tw-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05); box-shadow: var(--tw-ring-offset-shadow, 0 0 #0000), var(--tw-ring-shadow, 0 0 #0000), var(--tw-shadow); transition-property: color, background-color, border-color, text-decoration-color, fill, stroke; transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1); transition-duration: 150ms; }
+    .btn:focus { outline: 2px solid transparent; outline-offset: 2px; --tw-ring-offset-shadow: var(--tw-ring-inset) 0 0 0 var(--tw-ring-offset-width) var(--tw-ring-offset-color); --tw-ring-shadow: var(--tw-ring-inset) 0 0 0 calc(2px + var(--tw-ring-offset-width)) var(--tw-ring-color); box-shadow: var(--tw-ring-offset-shadow), var(--tw-ring-shadow), var(--tw-shadow, 0 0 #0000); }
+    .btn-primary { color: #ffffff; background-color: #2563eb; --tw-ring-color: #2563eb;} .btn-primary:hover { background-color: #1d4ed8;} .btn-primary:focus { --tw-ring-offset-color: #ffffff;}
+    .btn-secondary { color: #374151; background-color: #ffffff; border-color: #d1d5db;} .btn-secondary:hover { background-color: #f9fafb;} .btn-secondary:focus { --tw-ring-color: #4f46e5;}
+    .btn-danger-text { color: #dc2626; } .btn-danger-text:hover { color: #b91c1c; text-decoration-line: underline; } .btn-danger-text:focus { --tw-ring-color: #fee2e2; }
+    .btn-info-text { color: #4f46e5; } .btn-info-text:hover { color: #3730a3; text-decoration-line: underline; } .btn-info-text:focus { --tw-ring-color: #e0e7ff; }
+
+    .display-field { display: block; margin-top: 0.25rem; font-size: 0.875rem; line-height: 1.25rem; color: #1f2937; padding: 0.5rem 0.75rem; border-width: 1px; border-color: #d1d5db; border-radius: 0.375rem; background-color: #f9fafb; width: 100%; min-height: calc(0.5rem * 2 + 1.25rem + 2px); }
+
+    #assignment-modal .add-mode-field,
+    #assignment-modal .edit-mode-field { display: none; }
+    #assignment-modal.add-mode .add-mode-field { display: block; }
+    #assignment-modal.edit-mode .edit-mode-field { display: block; }
+    #assignment-modal.edit-mode .add-mode-field { display: none; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div id="hostel-manager-wrapper"> {# Wrapper ID #}
+
+    {# Header & Add Button #}
+    <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 gap-4">
+        <h2 class="text-2xl font-semibold text-gray-800">Hostel Assignments</h2>
+        <button id="add-assignment-btn" class="btn btn-primary whitespace-nowrap"> Assign Student to Hostel </button> {# Corrected ID #}
+    </div>
+
+    {# Toast Container #}
+    <div id="toast-container"></div>
+
+    {# Display Messages #}
+    {% if toast_success %} <div class="p-4 mb-4 text-sm text-green-700 bg-green-100 rounded-lg border border-green-300" role="alert">{{ toast_success }}</div> {% endif %}
+    {% if toast_error %} <div class="p-4 mb-4 text-sm text-red-700 bg-red-100 rounded-lg border border-red-300" role="alert">{{ toast_error }}</div> {% endif %}
+
+    {# Assignment List Table #}
+    <div class="bg-white p-4 md:p-6 rounded-lg shadow overflow-x-auto">
+        <table class="min-w-full divide-y divide-gray-200">
+            <thead class="bg-gray-50">
+                <tr>
+                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">ID</th>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Student Name</th>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Hostel Name</th>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Room No.</th>
+                    <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Fees</th>
+                    {# Removed Check-in / Check-out columns #}
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+                </tr>
+            </thead>
+            <tbody id="assignment-table-body" class="bg-white divide-y divide-gray-200"> {# Corrected ID #}
+                {% if hostel_assignments %}
+                    {% for assign in hostel_assignments %}
+                    <tr>
+                        <td class="px-4 py-4 whitespace-nowrap text-sm text-gray-700">{{ assign.id }}</td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{{ assign.student.name if assign.student else 'N/A' }}</td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-600">{{ assign.hostel_name }}</td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-600">{{ assign.room_number | default('N/A') }}</td> {# Handle potential None #}
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-right text-gray-700">{{ "%.2f"|format(assign.fees | default(0.0)) if assign.fees is not none else 'N/A' }}</td>
+                        {# Removed Check-in / Check-out cells #}
+                        <td class="px-6 py-4 whitespace-nowrap text-sm font-medium space-x-3">
+                            <button type="button" class="edit-assignment-btn btn-info-text" {# Corrected class #}
+                                    data-assign-id="{{ assign.id }}"
+                                    data-student-name="{{ assign.student.name | e if assign.student else 'Unknown' }}"
+                                    data-hostel-name="{{ assign.hostel_name | e }}"
+                                    data-room-number="{{ assign.room_number | default('', true) | e }}" {# Handle potential None #}
+                                    data-fees="{{ assign.fees if assign.fees is not none else '' }}">
+                                    {# Removed date attributes #}
+                                Edit
+                            </button>
+                            <form action="{{ url_for('admin_delete_hostel_assignment', assignment_id=assign.id) }}" method="post" class="inline delete-assignment-form"> {# Corrected class #}
+                                 <button type="submit" class="btn-danger-text">Delete</button>
+                            </form>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                {% else %}
+                    <tr><td colspan="6" class="text-center py-4 text-gray-500">No hostel assignments found.</td></tr> {# Adjusted colspan #}
+                {% endif %}
+            </tbody>
+        </table>
+    </div>
+
+    {# Hostel Assignment Modal - Check IDs, Removed date fields #}
+    <div id="assignment-modal" class="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-0 hidden" aria-labelledby="modal-title" role="dialog" aria-modal="true">
+         <div id="modal-overlay" class="fixed inset-0 bg-black/50 backdrop-blur-sm" aria-hidden="true"></div>
+         <div id="modal-dialog" class="relative w-full max-w-lg overflow-hidden rounded-lg bg-white p-6 shadow-xl sm:my-8 sm:w-full sm:max-w-lg transform transition-all">
+             <div class="flex items-center justify-between pb-3 border-b border-gray-200">
+                 <h3 id="modal-title" class="text-lg font-semibold leading-6 text-gray-900">Modal Title</h3>
+                 <button id="modal-close-btn" type="button" class="p-1 rounded-full text-gray-400 hover:bg-gray-200 hover:text-gray-600 focus:outline-none focus:ring-2 focus:ring-indigo-500"> <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" aria-hidden="true"> <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" /> </svg> </button>
+             </div>
+             <div class="mt-5">
+                 <div id="modal-error-area" class="hidden p-3 mb-4 text-sm text-red-700 bg-red-100 rounded-lg border border-red-300" role="alert"></div>
+                 <form id="modal-form" action="#" method="post" class="space-y-4">
+                    {# Add Mode Fields #}
+                    <div class="add-mode-field">
+                        <label for="modal-student-select" class="block text-sm font-medium text-gray-700 mb-1">Student:</label>
+                        <select id="modal-student-select" name="student_id_str" required class="form-select"> <option value="">-- Select Student --</option> </select>
+                    </div>
+                    {# Edit Mode Fields #}
+                    <div class="edit-mode-field">
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Student:</label>
+                        <span id="modal-student-name-display" class="display-field"></span>
+                    </div>
+
+                    {# Common/Edit Fields #}
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                            <label for="modal-hostel-select" class="block text-sm font-medium text-gray-700 mb-1">Hostel Name:</label>
+                            <select id="modal-hostel-select" name="hostel_name" required class="form-select"> <option value="">-- Select Hostel --</option> </select>
+                        </div>
+                        <div>
+                            <label for="modal-room-number" class="block text-sm font-medium text-gray-700 mb-1">Room Number:</label>
+                            <input type="text" id="modal-room-number" name="room_number" class="form-input"> {# Changed: Not required if model allows null #}
+                        </div>
+                        <div class="md:col-span-2"> {# Fees spans full width #}
+                             <label for="modal-fees" class="block text-sm font-medium text-gray-700 mb-1">Fees (Optional):</label>
+                             <input type="number" id="modal-fees" name="fees_str" min="0" step="0.01" class="form-input">
+                        </div>
+                        {# Removed Check-in / Check-out Date Inputs #}
+                    </div>
+                    <div class="flex justify-end space-x-3 pt-4 border-t border-gray-200 mt-6">
+                        <button id="modal-cancel-btn" type="button" class="btn btn-secondary"> Cancel </button>
+                        <button id="modal-submit-btn" type="submit" class="btn btn-primary"> Submit </button>
+                    </div>
+                 </form>
+             </div>
+         </div>
+    </div>
+
+</div>{# End Wrapper #}
+
+<script>
+    try { // Global try-catch
+    document.addEventListener('DOMContentLoaded', () => {
+        console.log("Initializing Hostel Assignment Manager...");
+
+        // --- Elements ---
+        const elements = {
+             modal: document.getElementById('assignment-modal'),
+             overlay: document.getElementById('modal-overlay'),
+             dialog: document.getElementById('modal-dialog'),
+             modalTitle: document.getElementById('modal-title'),
+             modalForm: document.getElementById('modal-form'),
+             studentSelect: document.getElementById('modal-student-select'), // Add mode
+             studentNameDisplay: document.getElementById('modal-student-name-display'), // Edit mode
+             hostelSelect: document.getElementById('modal-hostel-select'), // Both modes
+             roomInput: document.getElementById('modal-room-number'),       // Both modes
+             feesInput: document.getElementById('modal-fees'),             // Both modes
+             // REMOVED: checkInInput: document.getElementById('modal-check-in'),
+             // REMOVED: checkOutInput: document.getElementById('modal-check-out'),
+             errorArea: document.getElementById('modal-error-area'),
+             submitBtn: document.getElementById('modal-submit-btn'),
+             closeBtn: document.getElementById('modal-close-btn'),
+             cancelBtn: document.getElementById('modal-cancel-btn'),
+             addBtn: document.getElementById('add-assignment-btn'), // Correct ID
+             tableBody: document.getElementById('assignment-table-body'), // Correct ID
+             toastContainer: document.getElementById('toast-container')
+        };
+
+        // --- Element Check ---
+        let allElementsFound = true;
+        for (const [key, value] of Object.entries(elements)) {
+             // Check all elements listed above
+             if (!value) { console.error(`Hostel Init Error: Element '${key}' not found.`); allElementsFound = false; }
+        }
+        if (!allElementsFound) {
+             const wrapper = document.getElementById('hostel-manager-wrapper');
+             if(wrapper) wrapper.innerHTML = '<p class="text-red-600 p-4 text-center font-bold">Page Error: Components missing.</p>';
+             return;
+        }
+        console.log("All required hostel elements found.");
+
+
+        // --- Data Initialization ---
+        let students = []; try { students = {{ students_json | safe }}; if (!Array.isArray(students)) throw new Error();} catch(e) {console.error("Err parsing students", e);}
+        let hostelNames = []; try { hostelNames = {{ hostel_names_json | safe }}; if (!Array.isArray(hostelNames)) throw new Error();} catch(e) {console.error("Err parsing hostel names", e);}
+
+        // --- Populate Selects ---
+        function populateSelect(selectElement, data, valueField, textField, placeholder) {
+             if (!selectElement) return; selectElement.options.length = 1; selectElement.options[0].text = placeholder || "-- Select --"; selectElement.options[0].value = "";
+             if (Array.isArray(data)) { data.forEach(item => { const option = document.createElement('option'); option.value = item[valueField]; option.textContent = item[textField]; selectElement.appendChild(option); }); }
+        }
+        populateSelect(elements.studentSelect, students, 'id', 'name', '-- Select Unassigned Student --'); // Show only available students
+        // Populate Hostel Name Select
+         if (elements.hostelSelect && Array.isArray(hostelNames)) {
+             elements.hostelSelect.options.length = 1; elements.hostelSelect.options[0].text = '-- Select Hostel --'; elements.hostelSelect.options[0].value = '';
+             hostelNames.forEach(name => {
+                 const option = document.createElement('option'); option.value = name; option.textContent = name; elements.hostelSelect.appendChild(option);
+             });
+         }
+
+        // --- Toast Function ---
+        const showToast = (message, type = 'info', duration = 4000) => { /* ... same ... */ };
+
+        // --- Modal State & Helpers ---
+        let currentMode = 'add'; let editId = null;
+        const closeModal = () => { if(elements.modal) elements.modal.classList.add('hidden'); resetForm(); };
+        const resetForm = () => {
+            if (elements.modalForm) elements.modalForm.reset();
+            if (elements.studentSelect) elements.studentSelect.value = "";
+            if (elements.hostelSelect) elements.hostelSelect.value = ""; // Reset hostel select
+            if (elements.studentNameDisplay) elements.studentNameDisplay.textContent = "";
+            if (elements.errorArea) { elements.errorArea.classList.add('hidden'); elements.errorArea.textContent = ''; }
+            document.querySelectorAll(`#${elements.modalForm?.id} .border-red-500`).forEach(el => el.classList.remove('border-red-500'));
+             // Reset mode classes on modal itself
+             if(elements.modal) elements.modal.classList.remove('add-mode', 'edit-mode');
+        };
+
+        const openModal = (mode, data = null) => {
+             if (!elements.modal || !elements.modalForm) { console.error("Cannot open modal, elements missing"); return; }
+             currentMode = mode; resetForm();
+
+             // Apply mode class to modal root for CSS toggling
+             elements.modal.classList.remove('add-mode', 'edit-mode'); // Clean first
+             elements.modal.classList.add(`${mode}-mode`); // Add current mode class
+
+             if (mode === 'add') {
+                 editId = null; elements.modalTitle.textContent = 'Assign Student to Hostel';
+                 elements.modalForm.action = `{{ url_for('admin_assign_hostel') }}`; // Correct route name
+                 elements.submitBtn.textContent = 'Assign Hostel';
+                 if(elements.studentSelect) elements.studentSelect.required = true;
+                 if(elements.hostelSelect) elements.hostelSelect.required = true;
+                 // if(elements.roomInput) elements.roomInput.required = true; // Make required? Model allows null now
+             } else if (mode === 'edit' && data) {
+                 editId = data.id; if (!editId) {console.error("Edit mode missing ID"); return;}
+                 elements.modalTitle.textContent = 'Edit Hostel Assignment';
+                 elements.modalForm.action = `{{ request.url_for('admin_edit_hostel_assignment', assignment_id=0) }}`.replace('/0/edit', `/${editId}/edit`); // Construct edit URL
+                 // Display student name, populate others
+                 if(elements.studentNameDisplay) elements.studentNameDisplay.textContent = data.studentName || 'N/A';
+                 elements.hostelSelect.value = data.hostelName || '';
+                 elements.roomInput.value = data.roomNumber || '';
+                 elements.feesInput.value = data.fees || '';
+                 // elements.checkInInput.value = data.checkIn || ''; // REMOVED
+                 // elements.checkOutInput.value = data.checkOut || ''; // REMOVED
+                 elements.submitBtn.textContent = 'Update Assignment';
+                 if(elements.studentSelect) elements.studentSelect.required = false; // Not used/visible in edit
+                 if(elements.hostelSelect) elements.hostelSelect.required = true;
+                 // if(elements.roomInput) elements.roomInput.required = true; // Still required?
+             } else { console.error("Invalid modal state."); return; }
+             elements.modal.classList.remove('hidden');
+        };
+
+        // --- Delete Handler ---
+         const handleDelete = (formElement) => {
+             if (!formElement || !formElement.action) return;
+             const url = formElement.action;
+             fetch(url, { method: 'POST', headers: { 'Accept': 'application/json' /* CSRF? */ }})
+             .then(response => response.ok ? response.json() : response.json().then(err => Promise.reject(err)))
+             .then(data => {
+                 if (data.success) { showToast(data.message || 'Assignment deleted.', 'success'); formElement.closest('tr')?.remove(); }
+                 else { showToast(data.message || 'Failed to delete assignment.', 'error'); }
+             })
+             .catch(error => { showToast(`Error: ${error.message || 'Could not delete assignment.'}`, 'error'); });
+         };
+
+        // --- Event Listeners ---
+        if(elements.addBtn) elements.addBtn.addEventListener('click', () => openModal('add')); else console.warn("Add button not found.");
+        if(elements.tableBody) {
+             elements.tableBody.addEventListener('click', event => {
+                 const editBtn = event.target.closest('.edit-assignment-btn'); // Correct class
+                 const delForm = event.target.closest('.delete-assignment-form'); // Correct class
+                 if(editBtn) {
+                     const data = { // Read relevant data attributes
+                        id: editBtn.dataset.assignId, studentName: editBtn.dataset.studentName,
+                        hostelName: editBtn.dataset.hostelName, roomNumber: editBtn.dataset.roomNumber,
+                        fees: editBtn.dataset.fees
+                        // Removed checkIn, checkOut
+                     };
+                     openModal('edit', data);
+                 } else if(delForm) { event.preventDefault(); if(confirm('Are you sure?')) { handleDelete(delForm); } }
+             });
+        } else { console.warn("Assignment table body not found."); }
+        // Close listeners
+        if(elements.overlay) elements.overlay.addEventListener('click', closeModal); else console.warn("modal overlay not found");
+        if(elements.closeBtn) elements.closeBtn.addEventListener('click', closeModal); else console.warn("modal close btn not found");
+        if(elements.cancelBtn) elements.cancelBtn.addEventListener('click', closeModal); else console.warn("modal cancel btn not found");
+        if(elements.dialog) elements.dialog.addEventListener('click', (event) => { event.stopPropagation(); }); else console.warn("modal dialog not found");
+        window.addEventListener('keydown', (event) => { if (elements.modal && !elements.modal.classList.contains('hidden') && event.key === 'Escape') { closeModal(); }});
+
+        // --- Form validation ---
+         if(elements.modalForm) {
+             elements.modalForm.addEventListener('submit', event => {
+                let isValid = true; errorMsg = "";
+                if(elements.errorArea) elements.errorArea.classList.add('hidden');
+                document.querySelectorAll(`#${elements.modalForm.id} .border-red-500`).forEach(el => el.classList.remove('border-red-500'));
+
+                if (currentMode === 'add' && !elements.studentSelect.value) { isValid = false; errorMsg += "Student is required.\n"; elements.studentSelect.classList.add('border-red-500');}
+                if (!elements.hostelSelect.value) { isValid = false; errorMsg += "Hostel Name is required.\n"; elements.hostelSelect.classList.add('border-red-500');}
+                // Room number might be optional now based on model, remove required check if needed
+                // if (!elements.roomInput.value.trim()) { isValid = false; errorMsg += "Room Number is required.\n"; elements.roomInput.classList.add('border-red-500');}
+                // Validate fees format if entered
+                 const feesValue = elements.feesInput.value.trim();
+                 if (feesValue && isNaN(parseFloat(feesValue))) { isValid = false; errorMsg += "Fees must be a valid number.\n"; elements.feesInput.classList.add('border-red-500');}
+
+                if(!isValid){ event.preventDefault(); if(elements.errorArea){ elements.errorArea.textContent = errorMsg.trim(); elements.errorArea.classList.remove('hidden'); }}
+             });
+         }
+
+        // --- Show Initial Toasts ---
+        const showInitialToasts = () => {
+             try { const urlParams = new URLSearchParams(window.location.search); const s = {{ toast_success | tojson | safe }}; const e = {{ toast_error | tojson | safe }}; if(s) showToast(decodeURIComponent(s),'success'); if(e) showToast(decodeURIComponent(e),'error'); if(urlParams.has('toast_success') || urlParams.has('toast_error')) window.history.replaceState({}, document.title, window.location.pathname); } catch(e) { console.error("Toast error", e); }
+         };
+         showInitialToasts(); // Call on load
+
+        console.log("Hostel Assignment Manager Initialized.");
+
+    }); // End DOMContentLoaded
+    } catch(e) { console.error("Global JS Error:", e); }
+</script>
+{% endblock %}
